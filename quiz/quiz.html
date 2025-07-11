@@ -10,48 +10,19 @@
 <body>
   <div class="quiz-section">
     <div class="container">
-      <!-- Hide old content for now -->
-      <div id="old-quiz-content" class="hidden">
-        <div class="score">
-          <p class ="temp-score" id = "temp-score">0</p>
-          <span id="streak-fire" class="streak-fire hidden">🔥</span>
-          <div id="score-animation"></div>
-        </div>
-        <div class="content-area">
-          <div class="quiz-main-content" id="quiz-main-content">
-            <div class="title">
-              <h1>Round 1</h1>
-              <h2>Question 1</h2>
-              <div class="quiz-content">
-                <h3 id="question">Loading question...</h3>
-                <ul class="choices">
-                  <li class="choice" data-choice="A" id="firstChoice"></li>
-                  <li class="choice" data-choice="B" id="secondChoice"></li>
-                  <li class="choice" data-choice="C" id="thirdChoice"></li>
-                  <li class="choice" data-choice="D" id="fourthChoice"></li>
-                </ul>
-              </div>
-            </div>
-            <div class="play-button">
-              <button class = "playButton" id="playButton">
-                <img src="assets/buttons/playBtn.png" alt="Play" class="button-bg" />
-                <span></span></button>
-            </div>
-          </div>
-          <div id="end-message" class="end-message hidden"></div>
-        </div>
-        <canvas id="gameCanvas"></canvas>
-      </div> <!-- end of #old-quiz-content -->
+      <!-- Loading Popup -->
       <div id="loadingPopup" class="loading-popup hidden">
         <div class="popup-content">
           <div class="popup-spinner"></div>
           <p>Loading next question...</p>
         </div>
       </div>
-      <!-- New layout starts here -->
+      
+      <!-- New Quiz Layout -->
       <div class="quiz-new-layout">
         <!-- Progress Bar -->
         <div class="progress-bar"></div>
+        
         <!-- Header -->
         <div class="quiz-header">
           <div class="round-label">Round 1</div>
@@ -60,21 +31,22 @@
             &nbsp;|&nbsp; Topic: Fractions &nbsp;|&nbsp; Difficulty: <span class="difficulty-easy">Easy</span>
           </div>
         </div>
+        
         <!-- Main Content -->
         <div class="quiz-main-area">
           <div class="quiz-left">
             <div class="quiz-question-text">
-
+              <!-- Main question will be displayed here -->
             </div>
             <div class="quiz-help-icon">?</div>
           </div>
           <div class="quiz-right">
+            <div class="sub-question-text">
+              <!-- Sub-question will be displayed here -->
+            </div>
             <div class="quiz-info-label">Choose the correct answer:</div>
             <form class="quiz-choices-form">
-              <label class="quiz-choice-label"><input type="radio" name="answer" value="A"> A) 2</label>
-              <label class="quiz-choice-label"><input type="radio" name="answer" value="B"> B) 3</label>
-              <label class="quiz-choice-label"><input type="radio" name="answer" value="C"> C) 4</label>
-              <label class="quiz-choice-label"><input type="radio" name="answer" value="D"> D) 5</label>
+              <!-- Choices will be dynamically generated here -->
             </form>
             <button class="quiz-submit-btn">SUBMIT</button>
           </div>
@@ -83,5 +55,5 @@
     </div>
   </div>
   <script type="module" src="js/quiz.js"></script>
-  </body>
+</body>
 </html>

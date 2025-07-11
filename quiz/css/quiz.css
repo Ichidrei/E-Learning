@@ -1418,3 +1418,35 @@ canvas {
   letter-spacing: 0.01em;
   line-height: 1.4;
 }
+
+/* Feedback styles for new quiz choices */
+.quiz-choice-label.correct {
+  background: linear-gradient(145deg, #3aa12b, #41a432);
+  border-color: #42b331;
+  color: white;
+  box-shadow: 0 0 12px rgba(76, 209, 55, 0.5);
+  transform: scale(1.02);
+}
+
+.quiz-choice-label.wrong {
+  background: linear-gradient(145deg, #B0323A, #b13a42);
+  border-color: rgb(209, 57, 23);
+  color: white;
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.4);
+  transform: scale(1.02);
+}
+
+/* Main question context styles */
+.main-question-context {
+  font-family: 'Jersey 10', cursive;
+  font-size: 1.2rem;
+  color: #23282b;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.7rem;
+  border: 2px solid rgba(56, 142, 60, 0.3);
+}
