@@ -49,9 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const avgScoreElem = document.getElementById('averageScore');
             const lastActiveElem = document.getElementById('lastActive');
 
-            // Fetch all answers for this user (now from user_answers)
+            // Fetch all answers for this user
             const { data: answers, error } = await supabase
-                .from('user_answers')
+                .from('student_answers')
                 .select('is_correct, answered_at')
                 .eq('student_id', userId);
 
