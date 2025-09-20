@@ -276,10 +276,7 @@ form a {
     display: flex;
     justify-content: center;
     align-items: center;
-<<<<<<< HEAD
-=======
     overflow: hidden;
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
   }
   .container {
     margin: 0 auto;
@@ -304,10 +301,7 @@ form a {
     overflow-x: hidden;
     overflow-y: auto;
     background: #8AA8AB;
-<<<<<<< HEAD
-=======
     overflow: hidden;
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
   }
   .container {
     align-items: center;
@@ -347,8 +341,6 @@ form a {
     font-size: 0.8rem;
     top: 8px;
     left: 6px;
-<<<<<<< HEAD
-=======
   }
 }
 
@@ -386,7 +378,6 @@ form a {
     font-size: 1.6rem;
     top: 40px;
     left: 60px;
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
   }
 }
 
@@ -401,9 +392,4 @@ form a {
   z-index: 10;
   text-shadow: 1px 1px 6px #005582;
   font-family: 'Press Start 2P', monospace;
-<<<<<<< HEAD
 }
-
-=======
-}
->>>>>>> eaba1927515601979f12129b85b79d14de99d706

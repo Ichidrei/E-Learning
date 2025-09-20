@@ -12,16 +12,8 @@ body {
   justify-content: center;
   align-items: center;
   padding: 20px;
-<<<<<<< HEAD
-  transform: scale(0.75);
-  transform-origin: top left;
-  width: 133.33vw;
-  height: 133.33vh;
-  overflow-x: auto;
-=======
   overflow-x: auto;
   overflow: hidden !important;
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
 }
 
 .container {
@@ -259,10 +251,7 @@ form input {
     display: flex;
     justify-content: center;
     align-items: center;
-<<<<<<< HEAD
-=======
     overflow: hidden !important;
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
   }
   .container {
     margin: 0 auto;
