@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Guidelines - E-Learning Platform</title>
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.7;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff;
+            color: #181a20;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 60px 50px;
+            border-radius: 1.2rem;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            border: 1px solid #e0e0e0;
+        }
+        h1 {
+            color: #181a20;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'Inter', Arial, sans-serif;
+        }
+        h2 {
+            color: #181a20;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'Inter', Arial, sans-serif;
+        }
+        h3 {
+            color: #181a20;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            font-family: 'Inter', Arial, sans-serif;
+        }
+        p {
+            margin-bottom: 20px;
+            text-align: left;
+            color: #444;
+            font-size: 1rem;
+        }
+        .back-btn {
+            display: inline-block;
+            background-color: #181a20;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 2.5rem;
+            margin-bottom: 30px;
+            font-weight: 600;
+            font-family: 'Inter', Arial, sans-serif;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .back-btn:hover {
+            background-color: #333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.13);
+        }
+        .highlight {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #181a20;
+            margin: 25px 0;
+            border-radius: 0.5rem;
+            border: 1px solid #e0e0e0;
+        }
+        .warning {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 0.5rem;
+            margin: 25px 0;
+            border-left: 4px solid #181a20;
+        }
+        .success {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 0.5rem;
+            margin: 25px 0;
+            border-left: 4px solid #181a20;
+        }
+        ul {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+            color: #444;
+            line-height: 1.6;
+        }
+        .do-dont {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .do {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 0.5rem;
+            border-left: 4px solid #181a20;
+            border: 1px solid #e0e0e0;
+        }
+        .dont {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 0.5rem;
+            border-left: 4px solid #181a20;
+            border: 1px solid #e0e0e0;
+        }
+        strong {
+            color: #181a20;
+            font-weight: 600;
+        }
+        @media (max-width: 1024px) {
+            .container {
+                padding: 50px 40px;
+                max-width: 800px;
+            }
+            h1 {
+                font-size: 2.2rem;
+            }
+            h2 {
+                font-size: 1.4rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            .container {
+                padding: 40px 30px;
+                margin: 10px;
+                max-width: 100%;
+            }
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 30px;
+            }
+            h2 {
+                font-size: 1.3rem;
+                margin-top: 30px;
+                margin-bottom: 15px;
+            }
+            h3 {
+                font-size: 1.1rem;
+            }
+            p {
+                font-size: 0.95rem;
+                margin-bottom: 15px;
+            }
+            .back-btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+            .do-dont {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 30px 20px;
+                margin: 5px;
+                border-radius: 0.8rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+                margin-bottom: 25px;
+            }
+            h2 {
+                font-size: 1.2rem;
+                margin-top: 25px;
+                margin-bottom: 12px;
+            }
+            h3 {
+                font-size: 1rem;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+            p {
+                font-size: 0.9rem;
+                margin-bottom: 12px;
+            }
+            .back-btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+                margin-bottom: 20px;
+            }
+            .highlight, .warning, .success {
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .do-dont {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                margin: 15px 0;
+            }
+            .do, .dont {
+                padding: 15px;
+            }
+            ul {
+                margin-bottom: 15px;
+                padding-left: 15px;
+            }
+            li {
+                margin-bottom: 8px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            body {
+                padding: 5px;
+            }
+            .container {
+                padding: 20px 15px;
+                margin: 0;
+                border-radius: 0.5rem;
+            }
+            h1 {
+                font-size: 1.6rem;
+                margin-bottom: 20px;
+            }
+            h2 {
+                font-size: 1.1rem;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+            h3 {
+                font-size: 0.95rem;
+                margin-top: 15px;
+                margin-bottom: 8px;
+            }
+            p {
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+            }
+            .back-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+                margin-bottom: 15px;
+            }
+            .highlight, .warning, .success {
+                padding: 12px;
+                margin: 15px 0;
+            }
+            .do-dont {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                margin: 12px 0;
+            }
+            .do, .dont {
+                padding: 12px;
+            }
+            ul {
+                margin-bottom: 12px;
+                padding-left: 12px;
+            }
+            li {
+                margin-bottom: 6px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/login" class="back-btn">← Back to Login</a>
+        
+        <h1>Community Guidelines</h1>
+        
+        <div class="highlight">
+            <strong>Last Updated:</strong> January 2025<br>
+            <strong>Effective Date:</strong> January 1, 2025
+        </div>
+
+        <div class="success">
+            <strong>Our Mission:</strong> To create a safe, inclusive, and supportive learning environment where everyone can thrive and achieve their educational goals.
+        </div>
+
+        <h2>1. Introduction</h2>
+        <p>Welcome to the E-Learning Platform community! These guidelines are designed to ensure that our platform remains a positive, respectful, and productive learning environment for all users. By using our platform, you agree to follow these community standards.</p>
+
+        <h2>2. Core Values</h2>
+        <p>Our community is built on these fundamental values:</p>
+        <ul>
+            <li><strong>Respect:</strong> Treat everyone with dignity and respect, regardless of differences</li>
+            <li><strong>Inclusivity:</strong> Welcome and support diverse perspectives and backgrounds</li>
+            <li><strong>Integrity:</strong> Be honest, ethical, and accountable in all interactions</li>
+            <li><strong>Collaboration:</strong> Work together to create a supportive learning environment</li>
+            <li><strong>Growth:</strong> Encourage continuous learning and personal development</li>
+        </ul>
+
+        <h2>3. Expected Behavior</h2>
+        
+        <div class="do-dont">
+            <div class="do">
+                <h3>✅ DO</h3>
+                <ul>
+                    <li>Be respectful and courteous to all users</li>
+                    <li>Use inclusive and appropriate language</li>
+                    <li>Share knowledge and help others learn</li>
+                    <li>Provide constructive feedback</li>
+                    <li>Respect different opinions and perspectives</li>
+                    <li>Follow academic integrity standards</li>
+                    <li>Report inappropriate behavior</li>
+                    <li>Maintain professional communication</li>
+                </ul>
+            </div>
+            <div class="dont">
+                <h3>❌ DON'T</h3>
+                <ul>
+                    <li>Use offensive, discriminatory, or hateful language</li>
+                    <li>Harass, bully, or intimidate others</li>
+                    <li>Share inappropriate or explicit content</li>
+                    <li>Plagiarize or cheat on assignments</li>
+                    <li>Spam or flood discussions</li>
+                    <li>Impersonate others or create fake accounts</li>
+                    <li>Share personal information without consent</li>
+                    <li>Use the platform for commercial purposes</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>4. Communication Standards</h2>
+        
+        <h3>4.1 Discussion Forums and Comments</h3>
+        <p>When participating in discussions:</p>
+        <ul>
+            <li>Stay on topic and relevant to the subject matter</li>
+            <li>Use clear, respectful language</li>
+            <li>Support your arguments with evidence when appropriate</li>
+            <li>Be open to different viewpoints</li>
+            <li>Avoid personal attacks or inflammatory language</li>
+        </ul>
+
+        <h3>4.2 Private Messages</h3>
+        <p>When communicating privately:</p>
+        <ul>
+            <li>Respect others' boundaries and privacy</li>
+            <li>Use appropriate language and tone</li>
+            <li>Do not send unsolicited commercial messages</li>
+            <li>Report any inappropriate private communications</li>
+        </ul>
+
+        <h2>5. Academic Integrity</h2>
+        
+        <h3>5.1 Plagiarism and Cheating</h3>
+        <p>We have zero tolerance for academic dishonesty:</p>
+        <ul>
+            <li>Submit only your own original work</li>
+            <li>Properly cite all sources and references</li>
+            <li>Do not share answers or assignments with others</li>
+            <li>Do not use unauthorized materials during assessments</li>
+            <li>Report suspected academic dishonesty</li>
+        </ul>
+
+        <h3>5.2 Collaboration Guidelines</h3>
+        <p>When collaboration is permitted:</p>
+        <ul>
+            <li>Follow specific assignment guidelines</li>
+            <li>Clearly indicate your contributions</li>
+            <li>Ensure all group members participate fairly</li>
+            <li>Maintain individual accountability</li>
+        </ul>
+
+        <h2>6. Content Standards</h2>
+        
+        <h3>6.1 Appropriate Content</h3>
+        <p>All content shared on the platform must be:</p>
+        <ul>
+            <li>Educational and relevant to the course or topic</li>
+            <li>Respectful and non-discriminatory</li>
+            <li>Free from explicit, violent, or harmful material</li>
+            <li>Compliant with copyright laws</li>
+            <li>Suitable for an educational environment</li>
+        </ul>
+
+        <h3>6.2 Prohibited Content</h3>
+        <p>The following content is strictly prohibited:</p>
+        <ul>
+            <li>Hate speech or discriminatory content</li>
+            <li>Explicit sexual content or pornography</li>
+            <li>Violent or graphic content</li>
+            <li>Spam, scams, or fraudulent content</li>
+            <li>Personal information of others without consent</li>
+            <li>Copyrighted material without permission</li>
+        </ul>
+
+        <h2>7. Reporting and Enforcement</h2>
+        
+        <h3>7.1 How to Report Violations</h3>
+        <p>If you encounter behavior that violates these guidelines:</p>
+        <ul>
+            <li>Use the "Report" feature on the platform</li>
+            <li>Provide specific details about the violation</li>
+            <li>Include relevant screenshots or evidence</li>
+            <li>Contact support at community@elearning-platform.com</li>
+        </ul>
+
+        <h3>7.2 Enforcement Actions</h3>
+        <p>Violations may result in:</p>
+        <ul>
+            <li>Warning messages and educational resources</li>
+            <li>Temporary suspension of account features</li>
+            <li>Permanent account suspension</li>
+            <li>Reporting to educational institutions</li>
+            <li>Legal action in severe cases</li>
+        </ul>
+
+        <h2>8. Privacy and Safety</h2>
+        
+        <h3>8.1 Personal Information</h3>
+        <p>Protect your privacy and the privacy of others:</p>
+        <ul>
+            <li>Do not share personal contact information publicly</li>
+            <li>Be cautious about sharing personal details</li>
+            <li>Report any privacy violations immediately</li>
+            <li>Use strong, unique passwords</li>
+        </ul>
+
+        <h3>8.2 Online Safety</h3>
+        <p>Stay safe while using the platform:</p>
+        <ul>
+            <li>Be cautious of suspicious messages or requests</li>
+            <li>Do not click on unknown links</li>
+            <li>Report any suspicious activity</li>
+            <li>Keep your account information secure</li>
+        </ul>
+
+        <h2>9. Support and Resources</h2>
+        
+        <h3>9.1 Getting Help</h3>
+        <p>If you need assistance:</p>
+        <ul>
+            <li>Check our FAQ and help documentation</li>
+            <li>Contact technical support for platform issues</li>
+            <li>Reach out to your instructor for academic questions</li>
+            <li>Use the community forum for general questions</li>
+        </ul>
+
+        <h3>9.2 Mental Health and Well-being</h3>
+        <p>We care about your well-being:</p>
+        <ul>
+            <li>Take breaks when needed</li>
+            <li>Seek help if you're struggling</li>
+            <li>Be supportive of others who may need help</li>
+            <li>Contact support if you're experiencing harassment or bullying</li>
+        </ul>
+
+        <h2>10. Updates and Changes</h2>
+        <p>These guidelines may be updated periodically to reflect community needs and platform evolution. Users will be notified of significant changes through the platform or email.</p>
+
+        <h2>11. Contact Information</h2>
+        <p>For questions about these Community Guidelines or to report violations:</p>
+        <p><strong>Email:</strong> community@elearning-platform.com<br>
+        <strong>Support Hours:</strong> Monday-Friday, 9 AM - 6 PM EST<br>
+        <strong>Emergency Contact:</strong> For urgent safety concerns, contact your local authorities</p>
+
+        <div class="warning">
+            <strong>Remember:</strong> These guidelines are designed to protect everyone in our community. By following them, you help create a positive learning environment for all users.
+        </div>
+
+        <div class="highlight">
+            <strong>Thank you</strong> for being part of our learning community and helping us maintain a safe, respectful, and productive environment for everyone!
+        </div>
+    </div>
+</body>
+</html> 
