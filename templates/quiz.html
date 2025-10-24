@@ -49,12 +49,10 @@
           <p>Loading next question...</p>
         </div>
       </div>
-      
-      <!-- New Quiz Layout -->
+      <!-- New layout starts here -->
       <div class="quiz-new-layout">
         <!-- Progress Bar -->
         <div class="progress-bar"></div>
-        
         <!-- Header -->
         <div class="quiz-header">
           <div class="round-label">Round 1</div>
@@ -63,17 +61,11 @@
             &nbsp;|&nbsp; Topic: Fractions &nbsp;|&nbsp; Difficulty: <span class="difficulty-easy">Easy</span>
           </div>
         </div>
-        
         <!-- Main Content -->
         <div class="quiz-main-area">
           <div class="quiz-left">
-<<<<<<< HEAD
-            <div class="quiz-question-text">
-              <!-- Main question will be displayed here -->
-=======
             <div class="quiz-question-text" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 220px; width: 100%;">
               <!-- main question context will be rendered here -->
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
             </div>
             <!-- Inline help placed below the hint button (desktop and mobile) -->
             <div id="quiz-inline-help" class="quiz-inline-help">
@@ -82,40 +74,22 @@
             </div>
           </div>
           <div class="quiz-right">
-            <div class="sub-question-text">
-              <!-- Sub-question will be displayed here -->
-            </div>
             <div class="quiz-info-label">Choose the correct answer:</div>
-<<<<<<< HEAD
-            <form class="quiz-choices-form">
-              <!-- Choices will be dynamically generated here -->
-            </form>
-=======
             <div class="quiz-choices-buttons">
               <button class="quiz-choice-btn" data-choice="A">A) 2</button>
               <button class="quiz-choice-btn" data-choice="B">B) 3</button>
               <button class="quiz-choice-btn" data-choice="C">C) 4</button>
               <button class="quiz-choice-btn" data-choice="D">D) 5</button>
             </div>
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
             <button class="quiz-submit-btn">SUBMIT</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-<<<<<<< HEAD:quiz/quiz.html
-  <script type="module" src="js/quiz.js"></script>
-<<<<<<< HEAD
-</body>
-=======
-  <audio id="correct-sound" src="assets/sounds/correct.mp3" preload="auto"></audio>
-  <audio id="wrong-sound" src="assets/sounds/wrong.mp3" preload="auto"></audio>
-=======
   <script type="module" src="{{ url_for('static', filename='js/quiz.js') }}"></script>
   <audio id="correct-sound" src="{{ url_for('static', filename='sounds/correct.mp3') }}" preload="auto"></audio>
 <audio id="wrong-sound" src="{{ url_for('static', filename='sounds/wrong.mp3') }}" preload="auto"></audio>
->>>>>>> upstream/frontdev/design:templates/quiz.html
   
   <div id="quiz-help-modal" class="quiz-help-modal" >
     <div class="quiz-help-modal-content">
@@ -142,11 +116,6 @@
       <p id="prestart-modal-text" class="quiz-feedback-explanation">We will start at the recommended difficulty.</p>
       <button id="prestart-modal-ok-btn" class="quiz-feedback-next-btn">Start</button>
     </div>
-<<<<<<< HEAD:quiz/quiz.html
-</div>
-  </body>
->>>>>>> eaba1927515601979f12129b85b79d14de99d706
-=======
   </div>
 
   <!-- Difficulty adjustment modal (used after completing a difficulty set) -->
@@ -160,5 +129,4 @@
 
   <!-- difficulty modal disabled; difficulty is computed from progress page and applied automatically -->
   </body> 
->>>>>>> upstream/frontdev/design:templates/quiz.html
 </html>
