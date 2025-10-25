@@ -583,18 +583,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 .from('main_questions')
                 .select('*')
                 .in('difficulty', diffVariants)
-                .order('id', { ascending: true })
                 .limit(100);
+                
             // Exclude usedQuestionIds only when there are any
             if (Array.isArray(usedQuestionIds) && usedQuestionIds.length > 0) {
                 query = query.not('id', 'in', `(${usedQuestionIds.join(',')})`);
             }
             const { data: mains, error: mainErr } = await query;
-
+            
             if (mainErr) {
                 console.error('❌ Error fetching main questions:', mainErr);
                 alert('Error fetching main questions: ' + mainErr.message);
                 return [];
+            }
+            
+            if (mains && mains.length > 0) {
+                mains.sort(() => Math.random() - 0.5); // shuffle locally
             }
 
             console.log(`✅ Successfully fetched ${mains?.length || 0} main questions`);
@@ -698,25 +702,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const helpModal = document.getElementById('quiz-help-modal');
             const hintTextElement = helpModal?.querySelector('p');
 
-            // Update hint content (modal for desktop, inline for phones)
+            // Update hint content (always inline below the hint button)
             const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints) : 'No hint available for this question.';
             if (hintTextElement) {
                 hintTextElement.textContent = appropriateHint;
             }
-            // Inline help text is set, but stays hidden until button tap on phones
+            // Inline help text is set, stays hidden until button click
             try {
                 const inlineHelp = document.getElementById('quiz-inline-help');
                 const inlineText = inlineHelp ? inlineHelp.querySelector('.quiz-inline-help-text') : null;
                 if (inlineHelp && inlineText) {
                     inlineText.textContent = appropriateHint;
-                    // Keep hidden by default; visibility is toggled on button click for phones
-                    if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) {
-                        inlineHelp.classList.remove('visible');
-                    }
+                    // Keep hidden by default; visibility is toggled on button click
+                    inlineHelp.classList.remove('visible');
                 }
             } catch (_) {}
 
-            // Add modal and label logic
+            // Add inline hint behavior
             const closeHelp = document.getElementById('close-help-modal');
             const quizHintLabel = hintBtn.querySelector('.quiz-hint-label');
             if (hintBtn && helpModal && closeHelp && quizHintLabel) {
@@ -725,24 +727,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newCloseHelp = closeHelp.cloneNode(true);
                 closeHelp.parentNode.replaceChild(newCloseHelp, closeHelp);
 
-                // **NEW: Record hint usage when the button is clicked**
+                // **Record hint usage when the button is clicked**
                 newHintBtn.addEventListener('click', () => {
                     recordHintUsage(sq.id); // Call the new function
-                    // On desktop/tablet show modal; on phones we rely on inline help
-                    const isPhone = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
-                    if (!isPhone) {
-                        helpModal.style.display = 'flex';
-                    } else {
-                        const inlineHelp = document.getElementById('quiz-inline-help');
-                        if (inlineHelp) inlineHelp.classList.add('visible');
+                    // Always show inline help below the hint button; do not open modal
+                    let inlineHelp = document.getElementById('quiz-inline-help');
+                    if (!inlineHelp) {
+                        inlineHelp = document.createElement('div');
+                        inlineHelp.id = 'quiz-inline-help';
+                        inlineHelp.className = 'quiz-inline-help';
+                        inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
+                        const left = document.querySelector('.quiz-left');
+                        if (left) left.appendChild(inlineHelp);
                     }
+                    const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
+                    if (inlineText) inlineText.textContent = appropriateHint;
+                    inlineHelp.classList.add('visible');
+                    inlineHelp.style.display = 'block';
                 });
-                newCloseHelp.addEventListener('click', () => {
-                    helpModal.style.display = 'none';
-                });
-                helpModal.addEventListener('click', (e) => {
-                    if (e.target === helpModal) helpModal.style.display = 'none';
-                });
+                // Close button and overlay no longer used for hint modal
                 newHintBtn.addEventListener('mouseenter', () => {
                     newHintBtn.querySelector('.quiz-hint-label').style.display = 'inline-block';
                 });
@@ -900,8 +903,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         playPromise.then(() => {
                             console.log(`${soundType} audio.play() succeeded`);
                         }).catch(err => {
-                            console.warn(`Could not play ${soundType} sound:`, err && err.message ? err.message : err);
-                            // fallback to a short beep if playback is blocked
+                             // inalis ko yung nag eeror dine
                             playBeepFallback(soundType);
                         });
                     }
