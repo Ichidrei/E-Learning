@@ -1712,7 +1712,7 @@ canvas {
     padding: 4rem 4rem 3rem 4rem;
   }
   .quiz-question-text, .sub-question-text {
-    font-size: 20px;
+    font-size: 1.3rem;
   }
   .quiz-info-label {
     font-size: 16px;
