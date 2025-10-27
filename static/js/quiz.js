@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // New: Timer variables
     let questionTimer = null;
-    const QUESTION_TIME = 60;
+    const QUESTION_TIME = 120;
     let timeLeft = QUESTION_TIME;
 
     // Audio elements (populated on DOMContentLoaded)
@@ -615,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`Fetching sub-questions for main question ${mq.id}...`);
                 const { data: subs, error: subErr } = await supabase
                     .from('sub_questions')
-                    .select('*, hints(first_hint, second_hint, third_hint)')
+                    .select('id, main_question_id, step_number, question, choices, correct_answer, misconception_tag, hint_id, incorrect_feedback, hints(first_hint, second_hint, third_hint)')
                     .eq('main_question_id', mq.id)
                     .order('step_number', { ascending: true });
 
@@ -874,7 +874,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const timeTakenSeconds = QUESTION_TIME;
 
         processAnswer(sq, mq, isCorrect, timeTakenSeconds);
-        showFeedbackModal(isCorrect);
+        showFeedbackModal(isCorrect, sq);
     }
 
     // New: Centralized function to process answer and update UI
@@ -1032,18 +1032,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // New: Centralized function to show feedback modal
-    function showFeedbackModal(isCorrect) {
+    function showFeedbackModal(isCorrect, subQuestion = null) {
         const feedbackStatus = document.getElementById('quiz-feedback-status');
         const feedbackExplanation = document.querySelector('.quiz-feedback-explanation');
+        const feedbackIncorrectText = document.getElementById('quiz-feedback-incorrect-text');
+        
         if (feedbackStatus && feedbackExplanation) {
             if (isCorrect) {
                 feedbackStatus.textContent = 'CORRECT';
                 feedbackStatus.className = 'quiz-feedback-status';
                 feedbackExplanation.textContent = 'You are on a roll! Keep it up!';
+                
+                // Hide incorrect feedback if correct
+                if (feedbackIncorrectText) {
+                    feedbackIncorrectText.style.display = 'none';
+                    feedbackIncorrectText.textContent = '';
+                }
             } else {
                 feedbackStatus.textContent = 'INCORRECT';
                 feedbackStatus.className = 'quiz-feedback-status incorrect';
-                feedbackExplanation.textContent = 'Don’t worry, you can try again. We’ll re-focus on this topic to help you master it.';
+                feedbackExplanation.textContent = 'Don\'t worry, you can try again. We\'ll re-focus on this topic to help you master it.';
+                
+                // Show incorrect feedback if available
+                if (feedbackIncorrectText && subQuestion && subQuestion.incorrect_feedback) {
+                    feedbackIncorrectText.textContent = subQuestion.incorrect_feedback;
+                    feedbackIncorrectText.style.display = 'block';
+                } else if (feedbackIncorrectText) {
+                    feedbackIncorrectText.style.display = 'none';
+                    feedbackIncorrectText.textContent = '';
+                }
             }
         }
             const feedbackModalEl = document.getElementById('quiz-feedback-modal');
@@ -1143,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         processAnswer(sq, mq, isCorrect, timeTakenSeconds);
-        showFeedbackModal(isCorrect);
+        showFeedbackModal(isCorrect, sq);
         // Do NOT auto-advance; require the user to click the Next button on the feedback modal
     });
 

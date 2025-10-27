@@ -1466,6 +1466,17 @@ canvas {
   color: #374151;
   font-family: 'Montserrat', Arial, sans-serif;
 }
+.quiz-feedback-incorrect-text {
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 0 0 1rem 0;
+  color: #181717;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-style: italic;
+  padding: 0.5rem;
+  background: rgba(185, 28, 28, 0.05);
+  border-radius: 0.5rem;
+}
 .quiz-feedback-next-btn {
   background: #101214;
   color: #ffffff;
