@@ -698,16 +698,10 @@ document.addEventListener('DOMContentLoaded', function() {
             hintBtn.innerHTML = '?<span class="quiz-hint-label" style="display:none;">Hint</span>';
             quizLeft.appendChild(hintBtn);
 
-            // Get the hint modal and its content element
-            const helpModal = document.getElementById('quiz-help-modal');
-            const hintTextElement = helpModal?.querySelector('p');
-
-            // Update hint content (always inline below the hint button)
+            // Get the appropriate hint for this user's scaffold level
             const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints) : 'No hint available for this question.';
-            if (hintTextElement) {
-                hintTextElement.textContent = appropriateHint;
-            }
-            // Inline help text is set, stays hidden until button click
+            
+            // Update inline help text (stays hidden until button click)
             try {
                 const inlineHelp = document.getElementById('quiz-inline-help');
                 const inlineText = inlineHelp ? inlineHelp.querySelector('.quiz-inline-help-text') : null;
@@ -719,38 +713,34 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (_) {}
 
             // Add inline hint behavior
-            const closeHelp = document.getElementById('close-help-modal');
             const quizHintLabel = hintBtn.querySelector('.quiz-hint-label');
-            if (hintBtn && helpModal && closeHelp && quizHintLabel) {
-                const newHintBtn = hintBtn.cloneNode(true);
-                hintBtn.parentNode.replaceChild(newHintBtn, hintBtn);
-                const newCloseHelp = closeHelp.cloneNode(true);
-                closeHelp.parentNode.replaceChild(newCloseHelp, closeHelp);
-
-                // **Record hint usage when the button is clicked**
-                newHintBtn.addEventListener('click', () => {
-                    recordHintUsage(sq.id); // Call the new function
-                    // Always show inline help below the hint button; do not open modal
-                    let inlineHelp = document.getElementById('quiz-inline-help');
-                    if (!inlineHelp) {
-                        inlineHelp = document.createElement('div');
-                        inlineHelp.id = 'quiz-inline-help';
-                        inlineHelp.className = 'quiz-inline-help';
-                        inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
-                        const left = document.querySelector('.quiz-left');
-                        if (left) left.appendChild(inlineHelp);
-                    }
-                    const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
-                    if (inlineText) inlineText.textContent = appropriateHint;
-                    inlineHelp.classList.add('visible');
-                    inlineHelp.style.display = 'block';
+            
+            // Add click event listener to the hint button
+            hintBtn.addEventListener('click', () => {
+                recordHintUsage(sq.id); // Record hint usage
+                // Always show inline help below the hint button
+                let inlineHelp = document.getElementById('quiz-inline-help');
+                if (!inlineHelp) {
+                    inlineHelp = document.createElement('div');
+                    inlineHelp.id = 'quiz-inline-help';
+                    inlineHelp.className = 'quiz-inline-help';
+                    inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
+                    const left = document.querySelector('.quiz-left');
+                    if (left) left.appendChild(inlineHelp);
+                }
+                const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
+                if (inlineText) inlineText.textContent = appropriateHint;
+                inlineHelp.classList.add('visible');
+                inlineHelp.style.display = 'block';
+            });
+            
+            // Add hover effects for hint button
+            if (quizHintLabel) {
+                hintBtn.addEventListener('mouseenter', () => {
+                    quizHintLabel.style.display = 'inline-block';
                 });
-                // Close button and overlay no longer used for hint modal
-                newHintBtn.addEventListener('mouseenter', () => {
-                    newHintBtn.querySelector('.quiz-hint-label').style.display = 'inline-block';
-                });
-                newHintBtn.addEventListener('mouseleave', () => {
-                    newHintBtn.querySelector('.quiz-hint-label').style.display = 'none';
+                hintBtn.addEventListener('mouseleave', () => {
+                    quizHintLabel.style.display = 'none';
                 });
             }
         }
@@ -862,7 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
 
-    function handleTimeout() {
+    async function handleTimeout() {
         submitLocked = true;
         submitBtn.disabled = true;
 
@@ -874,7 +864,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const timeTakenSeconds = QUESTION_TIME;
 
         processAnswer(sq, mq, isCorrect, timeTakenSeconds);
-        showFeedbackModal(isCorrect, sq);
+        await showFeedbackModal('timeout', sq);
     }
 
     // New: Centralized function to process answer and update UI
@@ -1031,27 +1021,77 @@ document.addEventListener('DOMContentLoaded', function() {
         btns.forEach(btn => btn.disabled = true);
     }
 
+    // Function to fetch random message from database
+    async function fetchRandomMessage(type) {
+        try {
+            const { data: messages, error } = await supabase
+                .from('quiz_message')
+                .select('message')
+                .eq('type', type);
+            
+            if (error) {
+                console.error('Error fetching quiz message:', error);
+                return getDefaultMessage(type);
+            }
+            
+            if (messages && messages.length > 0) {
+                // Pick a random message
+                const randomIndex = Math.floor(Math.random() * messages.length);
+                return messages[randomIndex].message;
+            } else {
+                return getDefaultMessage(type);
+            }
+        } catch (err) {
+            console.error('Exception fetching quiz message:', err);
+            return getDefaultMessage(type);
+        }
+    }
+
+    // Function to get default message if database fetch fails
+    function getDefaultMessage(type) {
+        const defaultMessages = {
+            'correct': 'You are on a roll! Keep it up!',
+            'incorrect': 'Don\'t worry, you can try again. We\'ll re-focus on this topic to help you master it.',
+            'timeout': 'Time\'s up! You ran out of time on this question.'
+        };
+        return defaultMessages[type] || 'Keep going!';
+    }
+
     // New: Centralized function to show feedback modal
-    function showFeedbackModal(isCorrect, subQuestion = null) {
+    async function showFeedbackModal(messageType, subQuestion = null) {
         const feedbackStatus = document.getElementById('quiz-feedback-status');
         const feedbackExplanation = document.querySelector('.quiz-feedback-explanation');
         const feedbackIncorrectText = document.getElementById('quiz-feedback-incorrect-text');
         
         if (feedbackStatus && feedbackExplanation) {
-            if (isCorrect) {
+            // Fetch random message from database
+            const message = await fetchRandomMessage(messageType);
+            
+            if (messageType === 'correct') {
                 feedbackStatus.textContent = 'CORRECT';
                 feedbackStatus.className = 'quiz-feedback-status';
-                feedbackExplanation.textContent = 'You are on a roll! Keep it up!';
+                feedbackExplanation.textContent = message;
                 
                 // Hide incorrect feedback if correct
                 if (feedbackIncorrectText) {
                     feedbackIncorrectText.style.display = 'none';
                     feedbackIncorrectText.textContent = '';
                 }
+            } else if (messageType === 'timeout') {
+                feedbackStatus.textContent = 'TIME\'S UP';
+                feedbackStatus.className = 'quiz-feedback-status timeout';
+                feedbackExplanation.textContent = message;
+                
+                // Hide incorrect feedback for timeout
+                if (feedbackIncorrectText) {
+                    feedbackIncorrectText.style.display = 'none';
+                    feedbackIncorrectText.textContent = '';
+                }
             } else {
+                // incorrect
                 feedbackStatus.textContent = 'INCORRECT';
                 feedbackStatus.className = 'quiz-feedback-status incorrect';
-                feedbackExplanation.textContent = 'Don\'t worry, you can try again. We\'ll re-focus on this topic to help you master it.';
+                feedbackExplanation.textContent = message;
                 
                 // Show incorrect feedback if available
                 if (feedbackIncorrectText && subQuestion && subQuestion.incorrect_feedback) {
@@ -1160,7 +1200,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         processAnswer(sq, mq, isCorrect, timeTakenSeconds);
-        showFeedbackModal(isCorrect, sq);
+        const messageType = isCorrect ? 'correct' : 'incorrect';
+        await showFeedbackModal(messageType, sq);
         // Do NOT auto-advance; require the user to click the Next button on the feedback modal
     });
 

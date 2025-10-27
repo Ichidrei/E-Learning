@@ -1458,7 +1458,9 @@ canvas {
   /* slightly reduce font size on wrap to avoid odd single-word wrapping */
   font-size: clamp(1.6rem, 2.2rem, 2.2rem);
 }
+.quiz-feedback-status.correct { color: #288311; }
 .quiz-feedback-status.incorrect { color: #b91c1c; }
+.quiz-feedback-status.timeout { color: #ff9800; }
 .quiz-feedback-explanation {
   font-size: 1rem;
   text-align: center;
