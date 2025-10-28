@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let score = 0;
     let roundCorrect = true;
     let subQuestionResults = [];
+    let hintsUsedSet = new Set(); // Track which sub-question IDs have used hints
 
     // --- New Mastery Logic Variables ---
     const easyAnswersNeeded = 5;
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
             mainQuestionAttempts: [],
             points: 0
         };
+        hintsUsedSet.clear(); // Reset hint tracking when starting new difficulty
     }
 
     // Function to get the appropriate hint based on user's scaffold level
@@ -447,7 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // New: Timer variables
     let questionTimer = null;
-    const QUESTION_TIME = 60;
+    const QUESTION_TIME = 120;
     let timeLeft = QUESTION_TIME;
 
     // Audio elements (populated on DOMContentLoaded)
@@ -615,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`Fetching sub-questions for main question ${mq.id}...`);
                 const { data: subs, error: subErr } = await supabase
                     .from('sub_questions')
-                    .select('*, hints(first_hint, second_hint, third_hint)')
+                    .select('id, main_question_id, step_number, question, choices, correct_answer, misconception_tag, hint_id, incorrect_feedback, hints(first_hint, second_hint, third_hint)')
                     .eq('main_question_id', mq.id)
                     .order('step_number', { ascending: true });
 
@@ -651,6 +653,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentSubIdx = 0;
                     subQuestionResults = [];
                     roundCorrect = true;
+                    hintsUsedSet.clear(); // Reset hint tracking for new question set
                     renderCurrentQuestion();
                 } else {
                     showEndMessage();
@@ -669,6 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSubIdx = 0;
             subQuestionResults = [];
             roundCorrect = true;
+            hintsUsedSet.clear(); // Reset hint tracking for new main question
             renderCurrentQuestion();
             return;
         }
@@ -698,16 +702,10 @@ document.addEventListener('DOMContentLoaded', function() {
             hintBtn.innerHTML = '?<span class="quiz-hint-label" style="display:none;">Hint</span>';
             quizLeft.appendChild(hintBtn);
 
-            // Get the hint modal and its content element
-            const helpModal = document.getElementById('quiz-help-modal');
-            const hintTextElement = helpModal?.querySelector('p');
-
-            // Update hint content (always inline below the hint button)
+            // Get the appropriate hint for this user's scaffold level
             const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints) : 'No hint available for this question.';
-            if (hintTextElement) {
-                hintTextElement.textContent = appropriateHint;
-            }
-            // Inline help text is set, stays hidden until button click
+            
+            // Update inline help text (stays hidden until button click)
             try {
                 const inlineHelp = document.getElementById('quiz-inline-help');
                 const inlineText = inlineHelp ? inlineHelp.querySelector('.quiz-inline-help-text') : null;
@@ -719,38 +717,34 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (_) {}
 
             // Add inline hint behavior
-            const closeHelp = document.getElementById('close-help-modal');
             const quizHintLabel = hintBtn.querySelector('.quiz-hint-label');
-            if (hintBtn && helpModal && closeHelp && quizHintLabel) {
-                const newHintBtn = hintBtn.cloneNode(true);
-                hintBtn.parentNode.replaceChild(newHintBtn, hintBtn);
-                const newCloseHelp = closeHelp.cloneNode(true);
-                closeHelp.parentNode.replaceChild(newCloseHelp, closeHelp);
-
-                // **Record hint usage when the button is clicked**
-                newHintBtn.addEventListener('click', () => {
-                    recordHintUsage(sq.id); // Call the new function
-                    // Always show inline help below the hint button; do not open modal
-                    let inlineHelp = document.getElementById('quiz-inline-help');
-                    if (!inlineHelp) {
-                        inlineHelp = document.createElement('div');
-                        inlineHelp.id = 'quiz-inline-help';
-                        inlineHelp.className = 'quiz-inline-help';
-                        inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
-                        const left = document.querySelector('.quiz-left');
-                        if (left) left.appendChild(inlineHelp);
-                    }
-                    const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
-                    if (inlineText) inlineText.textContent = appropriateHint;
-                    inlineHelp.classList.add('visible');
-                    inlineHelp.style.display = 'block';
+            
+            // Add click event listener to the hint button
+            hintBtn.addEventListener('click', () => {
+                recordHintUsage(sq.id); // Record hint usage
+                // Always show inline help below the hint button
+                let inlineHelp = document.getElementById('quiz-inline-help');
+                if (!inlineHelp) {
+                    inlineHelp = document.createElement('div');
+                    inlineHelp.id = 'quiz-inline-help';
+                    inlineHelp.className = 'quiz-inline-help';
+                    inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
+                    const left = document.querySelector('.quiz-left');
+                    if (left) left.appendChild(inlineHelp);
+                }
+                const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
+                if (inlineText) inlineText.textContent = appropriateHint;
+                inlineHelp.classList.add('visible');
+                inlineHelp.style.display = 'block';
+            });
+            
+            // Add hover effects for hint button
+            if (quizHintLabel) {
+                hintBtn.addEventListener('mouseenter', () => {
+                    quizHintLabel.style.display = 'inline-block';
                 });
-                // Close button and overlay no longer used for hint modal
-                newHintBtn.addEventListener('mouseenter', () => {
-                    newHintBtn.querySelector('.quiz-hint-label').style.display = 'inline-block';
-                });
-                newHintBtn.addEventListener('mouseleave', () => {
-                    newHintBtn.querySelector('.quiz-hint-label').style.display = 'none';
+                hintBtn.addEventListener('mouseleave', () => {
+                    quizHintLabel.style.display = 'none';
                 });
             }
         }
@@ -862,7 +856,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
 
-    function handleTimeout() {
+    async function handleTimeout() {
         submitLocked = true;
         submitBtn.disabled = true;
 
@@ -874,7 +868,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const timeTakenSeconds = QUESTION_TIME;
 
         processAnswer(sq, mq, isCorrect, timeTakenSeconds);
-        showFeedbackModal(isCorrect);
+        await showFeedbackModal('timeout', sq);
     }
 
     // New: Centralized function to process answer and update UI
@@ -971,13 +965,16 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const studentId = session?.user?.id || null;
+            // Check if hint was used for this sub-question
+            const usedHint = hintsUsedSet.has(sq.id);
             const answerRecord = {
                 student_id: studentId,
                 sub_question_id: sq.id,
                 main_question_id: mq.id,
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
-                difficulty: mq.difficulty
+                difficulty: mq.difficulty,
+                used_hint: usedHint
             };
 
             console.log('Attempting to insert answer record:', answerRecord);
@@ -1001,6 +998,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Failed to insert answer into user_answers:', err);
             const existingAnswers = JSON.parse(localStorage.getItem('userAnswersData') || '[]');
             const { data: { session } = {} } = await supabase.auth.getSession();
+            // Check if hint was used for this sub-question
+            const usedHint = hintsUsedSet.has(sq.id);
             existingAnswers.push({
                 student_id: session?.user?.id || null,
                 sub_question_id: sq.id,
@@ -1008,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
                 difficulty: mq.difficulty,
+                used_hint: usedHint,
                 timestamp: new Date().toISOString(),
                 stored_locally: true
             });
@@ -1031,19 +1031,86 @@ document.addEventListener('DOMContentLoaded', function() {
         btns.forEach(btn => btn.disabled = true);
     }
 
+    // Function to fetch random message from database
+    async function fetchRandomMessage(type) {
+        try {
+            const { data: messages, error } = await supabase
+                .from('quiz_message')
+                .select('message')
+                .eq('type', type);
+            
+            if (error) {
+                console.error('Error fetching quiz message:', error);
+                return getDefaultMessage(type);
+            }
+            
+            if (messages && messages.length > 0) {
+                // Pick a random message
+                const randomIndex = Math.floor(Math.random() * messages.length);
+                return messages[randomIndex].message;
+            } else {
+                return getDefaultMessage(type);
+            }
+        } catch (err) {
+            console.error('Exception fetching quiz message:', err);
+            return getDefaultMessage(type);
+        }
+    }
+
+    // Function to get default message if database fetch fails
+    function getDefaultMessage(type) {
+        const defaultMessages = {
+            'correct': 'You are on a roll! Keep it up!',
+            'incorrect': 'Don\'t worry, you can try again. We\'ll re-focus on this topic to help you master it.',
+            'timeout': 'Time\'s up! You ran out of time on this question.'
+        };
+        return defaultMessages[type] || 'Keep going!';
+    }
+
     // New: Centralized function to show feedback modal
-    function showFeedbackModal(isCorrect) {
+    async function showFeedbackModal(messageType, subQuestion = null) {
         const feedbackStatus = document.getElementById('quiz-feedback-status');
         const feedbackExplanation = document.querySelector('.quiz-feedback-explanation');
+        const feedbackIncorrectText = document.getElementById('quiz-feedback-incorrect-text');
+        
         if (feedbackStatus && feedbackExplanation) {
-            if (isCorrect) {
+            // Fetch random message from database
+            const message = await fetchRandomMessage(messageType);
+            
+            if (messageType === 'correct') {
                 feedbackStatus.textContent = 'CORRECT';
                 feedbackStatus.className = 'quiz-feedback-status';
-                feedbackExplanation.textContent = 'You are on a roll! Keep it up!';
+                feedbackExplanation.textContent = message;
+                
+                // Hide incorrect feedback if correct
+                if (feedbackIncorrectText) {
+                    feedbackIncorrectText.style.display = 'none';
+                    feedbackIncorrectText.textContent = '';
+                }
+            } else if (messageType === 'timeout') {
+                feedbackStatus.textContent = 'TIME\'S UP';
+                feedbackStatus.className = 'quiz-feedback-status timeout';
+                feedbackExplanation.textContent = message;
+                
+                // Hide incorrect feedback for timeout
+                if (feedbackIncorrectText) {
+                    feedbackIncorrectText.style.display = 'none';
+                    feedbackIncorrectText.textContent = '';
+                }
             } else {
+                // incorrect
                 feedbackStatus.textContent = 'INCORRECT';
                 feedbackStatus.className = 'quiz-feedback-status incorrect';
-                feedbackExplanation.textContent = 'Don’t worry, you can try again. We’ll re-focus on this topic to help you master it.';
+                feedbackExplanation.textContent = message;
+                
+                // Show incorrect feedback if available
+                if (feedbackIncorrectText && subQuestion && subQuestion.incorrect_feedback) {
+                    feedbackIncorrectText.textContent = subQuestion.incorrect_feedback;
+                    feedbackIncorrectText.style.display = 'block';
+                } else if (feedbackIncorrectText) {
+                    feedbackIncorrectText.style.display = 'none';
+                    feedbackIncorrectText.textContent = '';
+                }
             }
         }
             const feedbackModalEl = document.getElementById('quiz-feedback-modal');
@@ -1143,7 +1210,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         processAnswer(sq, mq, isCorrect, timeTakenSeconds);
-        showFeedbackModal(isCorrect);
+        const messageType = isCorrect ? 'correct' : 'incorrect';
+        await showFeedbackModal(messageType, sq);
         // Do NOT auto-advance; require the user to click the Next button on the feedback modal
     });
 
@@ -1187,6 +1255,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             subQuestionResults = [];
             roundCorrect = true;
+            hintsUsedSet.clear(); // Reset hint tracking for new question set
             renderCurrentQuestion();
         } else {
             questionText.innerHTML = `No ${currentDifficulty} questions available. Quiz finished!`;
@@ -1297,6 +1366,10 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Track hint usage in progress data
             difficultyProgressData.hintUsageCount++;
+            
+            // Mark this sub-question as having used a hint
+            hintsUsedSet.add(subQuestionId);
+            console.log(`💡 Hint used for sub-question ${subQuestionId}`);
             
             // No server table exists for logging hint usage on your project.
             // Persist a lightweight local record instead to avoid network errors.
@@ -1420,15 +1493,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             difficultyModalText.textContent = `Great job! You've reached 75% accuracy and are ready for Medium challenges.`;
                         }
                     } else if (currentDifficulty === 'Medium') {
-                        if (userScaffoldLevel === 2 || !canAdjustDifficulty) {
+                        // Simplified Medium difficulty logic with 3 cases
+                        if (userScaffoldLevel === 2 && currentAccuracy < 75) {
+                            // Case 1: Scaffold 2 + Accuracy < 75% → Go to Easy
                             pendingNextDifficulty = 'Easy';
                             difficultyModalTitle.textContent = `Adjusting Difficulty`;
-                            if (userScaffoldLevel === 2) {
-                                difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
-                            } else {
-                                difficultyModalText.textContent = `Let's step back to Easy to improve accuracy. Current: ${currentAccuracy.toFixed(1)}%`;
-                            }
-                        } else {
+                            difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
+                        } else if (userScaffoldLevel === 1 && currentAccuracy <= 75) {
+                            // Case 2: Scaffold 1 + Accuracy <= 75% → Stay on Medium
+                            pendingNextDifficulty = 'Medium';
+                            difficultyModalTitle.textContent = `Keep Practicing`;
+                            difficultyModalText.textContent = `You're making progress! Let's stay on Medium to build your skills. Current: ${currentAccuracy.toFixed(1)}%`;
+                        } else if (userScaffoldLevel === 0 && currentAccuracy >= 75) {
+                            // Case 3: Scaffold 0 + Accuracy >= 75% → Go to Hard
                             pendingNextDifficulty = 'Hard';
                             difficultyModalTitle.textContent = `Level Up!`;
                             difficultyModalText.textContent = `You're doing well! You've reached 75% accuracy and are ready for Hard challenges.`;
@@ -1497,6 +1574,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // If no level-up, proceed to the next main question
                     roundCorrect = true;
                     subQuestionResults = [];
+                    hintsUsedSet.clear(); // Reset hint tracking for new main question
                     usedQuestionIds.push(mainQuestions[currentMainIdx].id);
                     currentSubIdx = 0;
                     currentMainIdx++;
