@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let score = 0;
     let roundCorrect = true;
     let subQuestionResults = [];
+    let hintsUsedSet = new Set(); // Track which sub-question IDs have used hints
 
     // --- New Mastery Logic Variables ---
     const easyAnswersNeeded = 5;
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
             mainQuestionAttempts: [],
             points: 0
         };
+        hintsUsedSet.clear(); // Reset hint tracking when starting new difficulty
     }
 
     // Function to get the appropriate hint based on user's scaffold level
@@ -651,6 +653,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentSubIdx = 0;
                     subQuestionResults = [];
                     roundCorrect = true;
+                    hintsUsedSet.clear(); // Reset hint tracking for new question set
                     renderCurrentQuestion();
                 } else {
                     showEndMessage();
@@ -669,6 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSubIdx = 0;
             subQuestionResults = [];
             roundCorrect = true;
+            hintsUsedSet.clear(); // Reset hint tracking for new main question
             renderCurrentQuestion();
             return;
         }
@@ -961,13 +965,16 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const studentId = session?.user?.id || null;
+            // Check if hint was used for this sub-question
+            const usedHint = hintsUsedSet.has(sq.id);
             const answerRecord = {
                 student_id: studentId,
                 sub_question_id: sq.id,
                 main_question_id: mq.id,
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
-                difficulty: mq.difficulty
+                difficulty: mq.difficulty,
+                used_hint: usedHint
             };
 
             console.log('Attempting to insert answer record:', answerRecord);
@@ -991,6 +998,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Failed to insert answer into user_answers:', err);
             const existingAnswers = JSON.parse(localStorage.getItem('userAnswersData') || '[]');
             const { data: { session } = {} } = await supabase.auth.getSession();
+            // Check if hint was used for this sub-question
+            const usedHint = hintsUsedSet.has(sq.id);
             existingAnswers.push({
                 student_id: session?.user?.id || null,
                 sub_question_id: sq.id,
@@ -998,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
                 difficulty: mq.difficulty,
+                used_hint: usedHint,
                 timestamp: new Date().toISOString(),
                 stored_locally: true
             });
@@ -1245,6 +1255,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             subQuestionResults = [];
             roundCorrect = true;
+            hintsUsedSet.clear(); // Reset hint tracking for new question set
             renderCurrentQuestion();
         } else {
             questionText.innerHTML = `No ${currentDifficulty} questions available. Quiz finished!`;
@@ -1355,6 +1366,10 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Track hint usage in progress data
             difficultyProgressData.hintUsageCount++;
+            
+            // Mark this sub-question as having used a hint
+            hintsUsedSet.add(subQuestionId);
+            console.log(`💡 Hint used for sub-question ${subQuestionId}`);
             
             // No server table exists for logging hint usage on your project.
             // Persist a lightweight local record instead to avoid network errors.
@@ -1478,15 +1493,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             difficultyModalText.textContent = `Great job! You've reached 75% accuracy and are ready for Medium challenges.`;
                         }
                     } else if (currentDifficulty === 'Medium') {
-                        if (userScaffoldLevel === 2 || !canAdjustDifficulty) {
+                        // Simplified Medium difficulty logic with 3 cases
+                        if (userScaffoldLevel === 2 && currentAccuracy < 75) {
+                            // Case 1: Scaffold 2 + Accuracy < 75% → Go to Easy
                             pendingNextDifficulty = 'Easy';
                             difficultyModalTitle.textContent = `Adjusting Difficulty`;
-                            if (userScaffoldLevel === 2) {
-                                difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
-                            } else {
-                                difficultyModalText.textContent = `Let's step back to Easy to improve accuracy. Current: ${currentAccuracy.toFixed(1)}%`;
-                            }
-                        } else {
+                            difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
+                        } else if (userScaffoldLevel === 1 && currentAccuracy <= 75) {
+                            // Case 2: Scaffold 1 + Accuracy <= 75% → Stay on Medium
+                            pendingNextDifficulty = 'Medium';
+                            difficultyModalTitle.textContent = `Keep Practicing`;
+                            difficultyModalText.textContent = `You're making progress! Let's stay on Medium to build your skills. Current: ${currentAccuracy.toFixed(1)}%`;
+                        } else if (userScaffoldLevel === 0 && currentAccuracy >= 75) {
+                            // Case 3: Scaffold 0 + Accuracy >= 75% → Go to Hard
                             pendingNextDifficulty = 'Hard';
                             difficultyModalTitle.textContent = `Level Up!`;
                             difficultyModalText.textContent = `You're doing well! You've reached 75% accuracy and are ready for Hard challenges.`;
@@ -1555,6 +1574,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // If no level-up, proceed to the next main question
                     roundCorrect = true;
                     subQuestionResults = [];
+                    hintsUsedSet.clear(); // Reset hint tracking for new main question
                     usedQuestionIds.push(mainQuestions[currentMainIdx].id);
                     currentSubIdx = 0;
                     currentMainIdx++;
