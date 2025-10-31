@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let score = 0;
     let roundCorrect = true;
     let subQuestionResults = [];
+    let hintsUsedSet = new Set(); // Track which sub-question IDs have used hints
 
     // --- New Mastery Logic Variables ---
     const easyAnswersNeeded = 5;
@@ -47,7 +48,8 @@ document.addEventListener('DOMContentLoaded', function() {
         hintUsageCount: 0,           // Number of times hint was used in current difficulty
         mistakeCount: 0,             // Number of incorrect main question attempts in current difficulty
         mainQuestionAttempts: [],    // Track each main question attempt for ability calculation
-        points: 0                    // Accumulated points for correct sub-questions in this difficulty
+        points: 0,                   // Accumulated points for correct sub-questions in this difficulty
+        totalTimerSeconds: 0         // Total seconds spent on all questions in current difficulty
     };
 
     // --- User Scaffold Level ---
@@ -98,8 +100,10 @@ document.addEventListener('DOMContentLoaded', function() {
             hintUsageCount: 0,
             mistakeCount: 0,
             mainQuestionAttempts: [],
-            points: 0
+            points: 0,
+            totalTimerSeconds: 0
         };
+        hintsUsedSet.clear(); // Reset hint tracking when starting new difficulty
     }
 
     // Function to get the appropriate hint based on user's scaffold level
@@ -251,6 +255,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const abilityScore = calculateAbilityScore();
 
+            // Call ML prediction FIRST to get the predicted scaffold level
+            const predictedScaffoldLevel = await predictAndUpdateScaffoldLevel(studentId, accuracy, hintUsagePercentage, difficultyProgressData.mistakeCount, abilityScore, difficulty.toLowerCase());
+            
+            // Use the predicted scaffold level (or fallback to current if prediction failed)
+            const scaffoldLevelToInsert = predictedScaffoldLevel !== null ? predictedScaffoldLevel : userScaffoldLevel;
+
             const progressRecord = {
                 student_id: studentId,
                 accuracy: accuracy,
@@ -260,10 +270,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 difficulty: difficulty.toLowerCase(),
                 correct_answers: difficultyProgressData.correctMainQuestions,
                 points: difficultyProgressData.points || 0,
+                timer: difficultyProgressData.totalTimerSeconds || 0,  // Total seconds spent on all questions
+                scaffold: scaffoldLevelToInsert,  // Predicted scaffold level from ML model
                 last_updated: new Date().toISOString()
             };
 
             console.log(`Inserting progress data for ${difficulty}:`, progressRecord);
+            console.log(`🎯 Using predicted scaffold level: ${scaffoldLevelToInsert} (predicted: ${predictedScaffoldLevel}, fallback: ${userScaffoldLevel})`);
 
             // Insert new record for each difficulty completion
             const { error: insertError } = await supabase
@@ -273,10 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (insertError) {
                 console.error('❌ Error inserting user progress:', insertError);
             } else {
-                console.log('✅ Successfully inserted user progress data.');
-                
-                // Call ML prediction endpoint to update scaffold level
-                await predictAndUpdateScaffoldLevel(studentId, accuracy, hintUsagePercentage, difficultyProgressData.mistakeCount, abilityScore, difficulty.toLowerCase());
+                console.log('✅ Successfully inserted user progress data with scaffold level:', scaffoldLevelToInsert);
             }
 
         } catch (err) {
@@ -311,15 +321,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                console.log(`✅ Scaffold level updated to: ${result.scaffold_level}`);
-                // Optionally show a notification to the user
-                // You can add a UI notification here if desired
+                const predictedScaffoldLevel = result.scaffold_level;
+                console.log(`✅ Scaffold level updated to: ${predictedScaffoldLevel}`);
+                // Update the local variable as well
+                userScaffoldLevel = predictedScaffoldLevel;
+                // Return the predicted scaffold level
+                return predictedScaffoldLevel;
             } else {
                 console.error('❌ Failed to update scaffold level:', result.error);
+                return null; // Return null if prediction failed
             }
 
         } catch (err) {
             console.error('❌ Error calling ML prediction:', err);
+            return null; // Return null if there was an error
         }
     }
 
@@ -651,6 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentSubIdx = 0;
                     subQuestionResults = [];
                     roundCorrect = true;
+                    hintsUsedSet.clear(); // Reset hint tracking for new question set
                     renderCurrentQuestion();
                 } else {
                     showEndMessage();
@@ -669,6 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentSubIdx = 0;
             subQuestionResults = [];
             roundCorrect = true;
+            hintsUsedSet.clear(); // Reset hint tracking for new main question
             renderCurrentQuestion();
             return;
         }
@@ -957,17 +974,28 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error awarding points:', err);
         }
 
+        // Accumulate timer seconds for this question
+        try {
+            difficultyProgressData.totalTimerSeconds = (difficultyProgressData.totalTimerSeconds || 0) + timeTakenSeconds;
+            console.log(`⏱️ Added ${timeTakenSeconds}s to total timer. Total: ${difficultyProgressData.totalTimerSeconds}s`);
+        } catch (err) {
+            console.error('Error updating timer:', err);
+        }
+
         // Insert into user_answers
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const studentId = session?.user?.id || null;
+            // Check if hint was used for this sub-question
+            const usedHint = hintsUsedSet.has(sq.id);
             const answerRecord = {
                 student_id: studentId,
                 sub_question_id: sq.id,
                 main_question_id: mq.id,
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
-                difficulty: mq.difficulty
+                difficulty: mq.difficulty,
+                used_hint: usedHint
             };
 
             console.log('Attempting to insert answer record:', answerRecord);
@@ -991,6 +1019,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Failed to insert answer into user_answers:', err);
             const existingAnswers = JSON.parse(localStorage.getItem('userAnswersData') || '[]');
             const { data: { session } = {} } = await supabase.auth.getSession();
+            // Check if hint was used for this sub-question
+            const usedHint = hintsUsedSet.has(sq.id);
             existingAnswers.push({
                 student_id: session?.user?.id || null,
                 sub_question_id: sq.id,
@@ -998,6 +1028,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
                 difficulty: mq.difficulty,
+                used_hint: usedHint,
                 timestamp: new Date().toISOString(),
                 stored_locally: true
             });
@@ -1245,6 +1276,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             subQuestionResults = [];
             roundCorrect = true;
+            hintsUsedSet.clear(); // Reset hint tracking for new question set
             renderCurrentQuestion();
         } else {
             questionText.innerHTML = `No ${currentDifficulty} questions available. Quiz finished!`;
@@ -1355,6 +1387,10 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Track hint usage in progress data
             difficultyProgressData.hintUsageCount++;
+            
+            // Mark this sub-question as having used a hint
+            hintsUsedSet.add(subQuestionId);
+            console.log(`💡 Hint used for sub-question ${subQuestionId}`);
             
             // No server table exists for logging hint usage on your project.
             // Persist a lightweight local record instead to avoid network errors.
@@ -1478,15 +1514,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             difficultyModalText.textContent = `Great job! You've reached 75% accuracy and are ready for Medium challenges.`;
                         }
                     } else if (currentDifficulty === 'Medium') {
-                        if (userScaffoldLevel === 2 || !canAdjustDifficulty) {
+                        // Simplified Medium difficulty logic with 3 cases
+                        if (userScaffoldLevel === 2 && currentAccuracy < 75) {
+                            // Case 1: Scaffold 2 + Accuracy < 75% → Go to Easy
                             pendingNextDifficulty = 'Easy';
                             difficultyModalTitle.textContent = `Adjusting Difficulty`;
-                            if (userScaffoldLevel === 2) {
-                                difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
-                            } else {
-                                difficultyModalText.textContent = `Let's step back to Easy to improve accuracy. Current: ${currentAccuracy.toFixed(1)}%`;
-                            }
-                        } else {
+                            difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
+                        } else if (userScaffoldLevel === 1 && currentAccuracy <= 75) {
+                            // Case 2: Scaffold 1 + Accuracy <= 75% → Stay on Medium
+                            pendingNextDifficulty = 'Medium';
+                            difficultyModalTitle.textContent = `Keep Practicing`;
+                            difficultyModalText.textContent = `You're making progress! Let's stay on Medium to build your skills. Current: ${currentAccuracy.toFixed(1)}%`;
+                        } else if (userScaffoldLevel === 0 && currentAccuracy >= 75) {
+                            // Case 3: Scaffold 0 + Accuracy >= 75% → Go to Hard
                             pendingNextDifficulty = 'Hard';
                             difficultyModalTitle.textContent = `Level Up!`;
                             difficultyModalText.textContent = `You're doing well! You've reached 75% accuracy and are ready for Hard challenges.`;
@@ -1555,6 +1595,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // If no level-up, proceed to the next main question
                     roundCorrect = true;
                     subQuestionResults = [];
+                    hintsUsedSet.clear(); // Reset hint tracking for new main question
                     usedQuestionIds.push(mainQuestions[currentMainIdx].id);
                     currentSubIdx = 0;
                     currentMainIdx++;

@@ -561,8 +561,8 @@ section {
 .brand-area button {
   font-size: 1.2rem;
   font-weight: 700;
-  background: #0891b2;
-  color: #fff;
+  background: #ffffff;
+  color: #000000;
   border: none;
   border-radius: 2.5rem;
   padding: 0.9rem 2.5rem;
@@ -585,7 +585,7 @@ section {
   font-size: 5.5rem;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: #0891b2;
+  color: #ffffff;
   display: inline-block;
   position: relative;
   margin-bottom: 1.5rem;
@@ -615,7 +615,7 @@ section {
 }
 .brand-subtitle {
   font-size: 1.3rem;
-  color: #0891b2;
+  color: #ffffff;
   margin-top: 0.5rem;
   max-width: 600px;
   margin-left: auto;
