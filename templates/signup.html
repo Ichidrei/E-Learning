@@ -9,7 +9,7 @@
   <script type="module" src="/static/js/signup.js"></script>
 </head>
 <body>
-  <div class="branding">E-LEARNING!</div>
+  <div class="branding">InQUIZition</div>
   <div class="container">
     <aside class="image-section">
     </aside>
@@ -44,19 +44,10 @@
           <div class="terms-agreement">
             <label>
               <input type="checkbox" id="termsCheckbox" required>
-              I agree with the <a href="#">Terms & Conditions</a>
+              I agree with the <a href="{{ url_for('static', filename='policies/user-agreement.html') }}" id="termsLink" role="button">Terms & Conditions</a>
             </label>
           </div>
-          <!--
-           <div class="role-selection">
-            <label>
-              <input type="radio" name="role" value="teacher" id="roleTeacher" checked> Teacher
-            </label>
-            <label>
-              <input type="radio" name="role" value="student" id="roleStudent"> Student
-            </label>
-          </div>
-          -->
+
          
           <div class="buttons">
             <button type="submit" class="signup-btn">Create account</button>
@@ -76,7 +67,33 @@
     </main>
   </div>
 
-
+  <!-- Terms & Conditions Modal -->
+  <div id="termsModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="termsOverlay"></div>
+    <div class="modal-content" role="document">
+      <button type="button" id="closeTermsModal" class="modal-close" aria-label="Close">×</button>
+      <h3>Terms & Conditions</h3>
+      <div class="modal-body">
+        <div class="modal-scroll">
+          <p><strong>Welcome to InQUIZition!</strong></p>
+          <p>By using this app, you agree to the following:</p>
+      
+          <ul>
+            <li>Use the app for learning and school-related activities only.</li>
+            <li>Do not attempt to harm, hack, or disrupt the system.</li>
+            <li>You are responsible for keeping your login information safe.</li>
+            <li>Do not upload or share anything inappropriate or copyrighted without permission.</li>
+            <li>We will do our best to keep your data secure based on our Privacy Policy.</li>
+            <li>If you break the rules, access to the app may be removed.</li>
+            <li>These terms may be updated over time. Continued use means you accept the changes.</li>
+          </ul>
+      
+          <p><strong>By continuing, you agree to these Terms & Conditions.</strong></p>
+      
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

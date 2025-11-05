@@ -692,7 +692,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Header
         roundLabel.textContent = `Round ${currentMainIdx + 1}`;
-        questionLabel.innerHTML = `<span class='question-number'>Main Q${currentMainIdx + 1}</span> | Topic: ${mq.topic || ''} | Difficulty: <span style='color:${(mq.difficulty||'').toLowerCase()==='easy' ? '#388e3c' : (mq.difficulty||'').toLowerCase()==='medium' ? '#ff9800' : '#B0323A'};'>${mq.difficulty||''}</span> | Correct Streak: ${score}`;
+        const difficultyColor = ((mq.difficulty || '').toLowerCase() === 'easy') ? '#388e3c'
+            : ((mq.difficulty || '').toLowerCase() === 'medium') ? '#ff9800'
+            : '#B0323A';
+        const scaffoldColor = (userScaffoldLevel === 2) ? '#B0323A' : (userScaffoldLevel === 1) ? '#ff9800' : '#388e3c';
+        questionLabel.innerHTML = `
+            <span class='question-number'>Main Q${currentMainIdx + 1}</span>
+            &nbsp;|&nbsp; Difficulty: <span style='color:${difficultyColor};'>${mq.difficulty || ''}</span>
+            &nbsp;|&nbsp; Scaffold: <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${scaffoldColor};"></span></span>
+        `;
 
         // Main question as context (optional)
         let mainQHtml = mq.main_question ? `<div class='main-question-context'>${mq.main_question}</div>` : '';
@@ -988,6 +996,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const studentId = session?.user?.id || null;
             // Check if hint was used for this sub-question
             const usedHint = hintsUsedSet.has(sq.id);
+            // Compute theta_progress based on updated rules (hint no longer affects scoring)
+            const diff = (mq.difficulty || '').toLowerCase();
+            let thetaProgress = 0;
+            if (isCorrect) {
+                if (diff === 'hard') thetaProgress = 1;
+                else if (diff === 'medium') thetaProgress = 1;
+                else if (diff === 'easy') thetaProgress = 0;
+                else thetaProgress = 0;
+            } else {
+                if (diff === 'easy') thetaProgress = -1;
+                else if (diff === 'medium') thetaProgress = -1;
+                else if (diff === 'hard') thetaProgress = 0;
+                else thetaProgress = 0;
+            }
+            // Time adjustments
+            if (isCorrect && timeTakenSeconds < 5) {
+                thetaProgress = 0; // guessed; remove positive
+            }
+            if (!isCorrect && timeTakenSeconds > 120) {
+                thetaProgress = -1; // struggled and still wrong
+            }
             const answerRecord = {
                 student_id: studentId,
                 sub_question_id: sq.id,
@@ -995,7 +1024,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 is_correct: isCorrect,
                 time_taken_seconds: timeTakenSeconds,
                 difficulty: mq.difficulty,
-                used_hint: usedHint
+                used_hint: usedHint,
+                theta_progress: thetaProgress
             };
 
             console.log('Attempting to insert answer record:', answerRecord);
@@ -1021,6 +1051,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const { data: { session } = {} } = await supabase.auth.getSession();
             // Check if hint was used for this sub-question
             const usedHint = hintsUsedSet.has(sq.id);
+            // Recompute theta_progress for fallback using updated rules
+            const diff = (mq.difficulty || '').toLowerCase();
+            let thetaProgress = 0;
+            if (isCorrect) {
+                if (diff === 'hard') thetaProgress = 1;
+                else if (diff === 'medium') thetaProgress = 1;
+                else if (diff === 'easy') thetaProgress = 0;
+                else thetaProgress = 0;
+            } else {
+                if (diff === 'easy') thetaProgress = -1;
+                else if (diff === 'medium') thetaProgress = -1;
+                else if (diff === 'hard') thetaProgress = 0;
+                else thetaProgress = 0;
+            }
+            if (isCorrect && timeTakenSeconds < 5) {
+                thetaProgress = 0;
+            }
+            if (!isCorrect && timeTakenSeconds > 120) {
+                thetaProgress = -1;
+            }
             existingAnswers.push({
                 student_id: session?.user?.id || null,
                 sub_question_id: sq.id,
@@ -1029,6 +1079,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 time_taken_seconds: timeTakenSeconds,
                 difficulty: mq.difficulty,
                 used_hint: usedHint,
+                theta_progress: thetaProgress,
                 timestamp: new Date().toISOString(),
                 stored_locally: true
             });
