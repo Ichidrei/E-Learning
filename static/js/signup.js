@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const termsOverlay = document.getElementById('termsOverlay');
   const closeTermsModal = document.getElementById('closeTermsModal');
   const termsCheckboxEl = document.getElementById('termsCheckbox');
+  let lastFocusedElement = null;
 
   // ------------------------------------ Navigate to Login Button ------------------------------------
   if (navigateToLoginBtn) {
@@ -45,13 +46,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------ Terms & Conditions Modal ------------------------------------
   function openTermsModal() {
     if (!termsModal) return;
+    // Remember what had focus to restore it later
+    lastFocusedElement = document.activeElement;
     termsModal.classList.add('open');
     termsModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+    // Move focus into the modal to avoid focus on hidden content elsewhere
+    if (closeTermsModal) {
+      closeTermsModal.focus();
+    } else {
+      termsModal.focus();
+    }
   }
 
   function closeTerms() {
     if (!termsModal) return;
+    // Ensure focus is moved OUT of the modal before hiding it
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+      lastFocusedElement.focus();
+    } else if (termsLink && typeof termsLink.focus === 'function') {
+      termsLink.focus();
+    } else if (termsCheckboxEl && typeof termsCheckboxEl.focus === 'function') {
+      termsCheckboxEl.focus();
+    }
+
     termsModal.classList.remove('open');
     termsModal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
