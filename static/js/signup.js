@@ -20,6 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const message = document.getElementById('message');
   const navigateToLoginBtn = document.getElementById('navigateToLoginBtn');
   const passwordToggles = document.querySelectorAll('.password-toggle');
+  const termsLink = document.getElementById('termsLink');
+  const termsModal = document.getElementById('termsModal');
+  const termsOverlay = document.getElementById('termsOverlay');
+  const closeTermsModal = document.getElementById('closeTermsModal');
+  const termsCheckboxEl = document.getElementById('termsCheckbox');
 
   // ------------------------------------ Navigate to Login Button ------------------------------------
   if (navigateToLoginBtn) {
@@ -36,6 +41,54 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // ------------------------------------ Terms & Conditions Modal ------------------------------------
+  function openTermsModal() {
+    if (!termsModal) return;
+    termsModal.classList.add('open');
+    termsModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeTerms() {
+    if (!termsModal) return;
+    termsModal.classList.remove('open');
+    termsModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    // Mark the checkbox as agreed upon closing the modal
+    if (termsCheckboxEl) {
+      termsCheckboxEl.checked = true;
+      termsCheckboxEl.dispatchEvent(new Event('change'));
+    }
+  }
+
+  if (termsLink) {
+    termsLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      openTermsModal();
+    });
+  }
+  if (termsOverlay) {
+    termsOverlay.addEventListener('click', closeTerms);
+  }
+  if (closeTermsModal) {
+    closeTermsModal.addEventListener('click', closeTerms);
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeTerms();
+  });
+
+  // Intercept checkbox click to require viewing modal first
+  if (termsCheckboxEl) {
+    termsCheckboxEl.addEventListener('click', (e) => {
+      // If user is trying to check it (current state is unchecked), open modal first
+      if (!termsCheckboxEl.checked) {
+        e.preventDefault();
+        openTermsModal();
+      }
+      // Allow unchecking without modal
+    });
+  }
 
   // ------------------------------------ Signup Form ------------------------------------
   if (signupForm) {
@@ -75,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // ------------------------------------ Password Strength Validation ------------------------------------
-      const passwordRequirements = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+      const passwordRequirements = /^(?=.*[A-Z])(?=.*[_!@#$%^&*(),.?":{}|<>]).{8,}$/;
       if (!passwordRequirements.test(password)) {
         message.textContent = 'Password must be at least 8 characters long, contain 1 uppercase letter, and 1 symbol.';
         message.style.color = 'red';

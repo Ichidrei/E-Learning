@@ -662,3 +662,85 @@ form input:focus {
   z-index: 10;
   font-family: 'Inter', Arial, sans-serif;
 }
+/* Modal styles */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal.open { display: flex; }
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+}
+.modal-content {
+  position: relative;
+  background: #fff;
+  width: 90vw;
+  max-width: 720px;
+  max-height: 85vh;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  padding: 16px;
+  overflow: hidden;
+}
+.modal-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: #181a20;
+}
+.modal-body {
+  height: 70vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+.modal-body iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.modal-scroll {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #181a20;
+}
+.modal-scroll h4 {
+  margin: 12px 0 6px 0;
+  font-size: 15px;
+}
+.modal-scroll p { margin: 0 0 8px 0; }
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #333;
+}
+@media (max-width: 600px) {
+  .modal-content {
+    width: 96vw;
+    max-width: 96vw;
+    padding: 12px;
+    border-radius: 10px;
+  }
+  .modal-content h3 { font-size: 16px; }
+  .modal-body { height: 65vh; }
+}
+/* Ensure small-screen overrides for name and gender inputs take precedence */
+@media (max-width: 600px) {
+  .name-fields input,
+  .name-fields .gender-select {
+    font-size: 12px;
+    padding: 6px;
+    height: 28px;
+    width: 100%;
+  }
+}
