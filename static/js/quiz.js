@@ -52,8 +52,9 @@ document.addEventListener('DOMContentLoaded', function() {
         totalTimerSeconds: 0         // Total seconds spent on all questions in current difficulty
     };
 
-    // --- User Scaffold Level ---
+    // --- User Scaffold Level & Ability Score ---
     let userScaffoldLevel = 0; // Default to Low (0) scaffold level
+    let userAbilityScore = 0;  // Default ability score from user_progress
 
     // Function to fetch user's current scaffold level
     async function fetchUserScaffoldLevel() {
@@ -90,6 +91,80 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Exception fetching user scaffold level:', err);
             userScaffoldLevel = 0; // Default to Low (0) if any exception occurs
         }
+    }
+
+    // Function to fetch the latest ability score from user_progress
+    async function fetchUserAbilityScore() {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const studentId = session?.user?.id || null;
+
+            if (!studentId) {
+                console.log('User not logged in, using default ability score (0)');
+                userAbilityScore = 0;
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('user_progress')
+                .select('ability')
+                .eq('student_id', studentId)
+                .order('last_updated', { ascending: false })
+                .limit(1);
+
+            if (error) {
+                console.error('❌ Error fetching user ability score:', error);
+                userAbilityScore = 0;
+                return;
+            }
+
+            const latestProgress = Array.isArray(data) ? data[0] : null;
+            if (latestProgress && typeof latestProgress.ability === 'number') {
+                userAbilityScore = latestProgress.ability;
+                console.log(`✅ User ability score from progress: ${userAbilityScore}`);
+            } else {
+                console.log('No ability score found in progress, defaulting to 0');
+                userAbilityScore = 0;
+            }
+        } catch (err) {
+            console.error('Exception fetching user ability score:', err);
+            userAbilityScore = 0;
+        }
+    }
+
+    function evaluateDifficultyTransition(currentDiff, accuracyPct, abilityScore) {
+        const diff = (currentDiff || 'Easy').toString().toLowerCase();
+        const acc = typeof accuracyPct === 'number' ? accuracyPct : 0;
+        const ability = typeof abilityScore === 'number' ? abilityScore : 0;
+
+        if (diff === 'easy') {
+            if (acc > 75 && ability === 1) {
+                return { nextDifficulty: 'Medium', reason: 'PROMOTE_FROM_EASY' };
+            }
+            return { nextDifficulty: 'Easy', reason: 'STAY_EASY' };
+        }
+
+        if (diff === 'medium') {
+            if (ability === -1) {
+                return { nextDifficulty: 'Easy', reason: 'DEMOTE_TO_EASY' };
+            }
+            if (acc > 75 && ability === 1) {
+                return { nextDifficulty: 'Hard', reason: 'PROMOTE_FROM_MEDIUM' };
+            }
+            if (acc < 75 && ability === 0) {
+                return { nextDifficulty: 'Medium', reason: 'STAY_MEDIUM_PROGRESS' };
+            }
+            return { nextDifficulty: 'Medium', reason: 'STAY_MEDIUM_DEFAULT' };
+        }
+
+        // Default to Hard branch
+        if (acc > 75 && (ability === 1 || ability === 0)) {
+            return { nextDifficulty: 'Hard', reason: 'STAY_HARD_MASTERY' };
+        }
+        if (ability === -1) {
+            return { nextDifficulty: 'Medium', reason: 'DEMOTE_TO_MEDIUM' };
+        }
+        return { nextDifficulty: 'Hard', reason: 'STAY_HARD_DEFAULT' };
     }
 
     // Function to reset progress tracking for new difficulty
@@ -697,9 +772,8 @@ document.addEventListener('DOMContentLoaded', function() {
             : '#B0323A';
         const scaffoldColor = (userScaffoldLevel === 2) ? '#B0323A' : (userScaffoldLevel === 1) ? '#ff9800' : '#388e3c';
         questionLabel.innerHTML = `
-            <span class='question-number'>Main Q${currentMainIdx + 1}</span>
-            &nbsp;|&nbsp; Difficulty: <span style='color:${difficultyColor};'>${mq.difficulty || ''}</span>
-            &nbsp;|&nbsp; Scaffold: <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${scaffoldColor};"></span></span>
+            Difficulty: <span style='color:${difficultyColor};'>${mq.difficulty || ''}</span>
+            &nbsp;|&nbsp; Scaffold: <span class='scaffold-level-value' style='font-weight:700;'>${typeof userScaffoldLevel === 'number' ? userScaffoldLevel : 0}</span>
         `;
 
         // Main question as context (optional)
@@ -1350,6 +1424,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (quizMainArea) quizMainArea.classList.remove('hidden');
         await syncLocalStorageData();
         await fetchUserScaffoldLevel();
+        await fetchUserAbilityScore();
 
         // Determine recommended difficulty: priority is localStorage from progress page, else compute from DB
         let recommended = localStorage.getItem('startingDifficulty');
@@ -1358,32 +1433,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const { data: { session } } = await supabase.auth.getSession();
                 const studentId = session?.user?.id || null;
                 if (studentId) {
-                    const [{ data: latestProgress }, userProfile] = await Promise.all([
-                        supabase
-                            .from('user_progress')
-                            .select('accuracy, difficulty')
-                            .eq('student_id', studentId)
-                            .order('last_updated', { ascending: false })
-                            .limit(1)
-                            .maybeSingle(),
-                        supabase
-                            .from('user_profiles')
-                            .select('scaffold_level')
-                            .eq('id', studentId)
-                            .single()
-                    ]);
+                    const { data: latestProgress } = await supabase
+                        .from('user_progress')
+                        .select('accuracy, difficulty, ability')
+                        .eq('student_id', studentId)
+                        .order('last_updated', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
                     const lastDiff = latestProgress?.difficulty || 'easy';
                     const accDec = typeof latestProgress?.accuracy === 'number' ? latestProgress.accuracy : 0;
-                    const scaffold = typeof userProfile?.scaffold_level === 'number' ? userProfile.scaffold_level : 0;
-                    const rec = (() => {
-                        const accPct = accDec * 100;
-                        const canAdjust = (scaffold === 0 || scaffold === 1) && accPct >= 75;
-                        const cur = (lastDiff || 'easy').toLowerCase();
-                        if (cur === 'easy') return (scaffold === 2 || !canAdjust) ? 'Easy' : 'Medium';
-                        if (cur === 'medium') return (scaffold === 2 || !canAdjust) ? 'Easy' : 'Hard';
-                        return (scaffold === 2 || !canAdjust) ? 'Medium' : 'Hard';
-                    })();
-                    recommended = rec;
+                    const abilityScore = typeof latestProgress?.ability === 'number' ? latestProgress.ability : 0;
+                    const transition = evaluateDifficultyTransition(lastDiff, accDec * 100, abilityScore);
+                    recommended = transition.nextDifficulty;
                 } else {
                     recommended = 'Easy';
                 }
@@ -1535,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Wait for model update then fetch scaffold level to decide next step
                     await new Promise(resolve => setTimeout(resolve, 2500));
                     await fetchUserScaffoldLevel();
+                    await fetchUserAbilityScore();
                     // Hide loading popup before showing the difficulty modal
                     showLoadingPopupFn(false);
 
@@ -1543,59 +1606,49 @@ document.addEventListener('DOMContentLoaded', function() {
                         ? (difficultyProgressData.correctMainQuestions / difficultyProgressData.totalMainQuestions) * 100
                         : 0;
                     
-                    // Check if user meets both scaffold level and accuracy requirements for difficulty adjustment
-                    const canAdjustDifficulty = (userScaffoldLevel === 0 || userScaffoldLevel === 1) && currentAccuracy >= 75;
-                    
-                    console.log(`📊 Difficulty Adjustment Check - Scaffold Level: ${userScaffoldLevel}, Accuracy: ${currentAccuracy.toFixed(1)}%, Can Adjust: ${canAdjustDifficulty}`);
+                    const transitionDecision = evaluateDifficultyTransition(currentDifficulty, currentAccuracy, userAbilityScore);
+                    pendingNextDifficulty = transitionDecision.nextDifficulty;
 
-                    // Rule-based difficulty adjustment using scaffold level AND 75% accuracy requirement
-                    // scaffold_level: 0=Low, 1=Medium, 2=High
-                    if (currentDifficulty === 'Easy') {
-                        if (userScaffoldLevel === 2 || !canAdjustDifficulty) {
-                            pendingNextDifficulty = 'Easy';
-                            difficultyModalTitle.textContent = `Keep Practicing`;
-                            if (userScaffoldLevel === 2) {
-                                difficultyModalText.textContent = `We'll keep you on Easy for now to strengthen fundamentals.`;
-                            } else {
-                                difficultyModalText.textContent = `Keep practicing to reach 75% accuracy before advancing. Current: ${currentAccuracy.toFixed(1)}%`;
-                            }
-                        } else {
-                            pendingNextDifficulty = 'Medium';
+                    console.log(`📊 Difficulty Adjustment Check - Ability: ${userAbilityScore}, Accuracy: ${currentAccuracy.toFixed(1)}%, Next: ${pendingNextDifficulty}`);
+
+                    switch (transitionDecision.reason) {
+                        case 'PROMOTE_FROM_EASY':
                             difficultyModalTitle.textContent = `Level Up!`;
-                            difficultyModalText.textContent = `Great job! You've reached 75% accuracy and are ready for Medium challenges.`;
-                        }
-                    } else if (currentDifficulty === 'Medium') {
-                        // Simplified Medium difficulty logic with 3 cases
-                        if (userScaffoldLevel === 2 && currentAccuracy < 75) {
-                            // Case 1: Scaffold 2 + Accuracy < 75% → Go to Easy
-                            pendingNextDifficulty = 'Easy';
-                            difficultyModalTitle.textContent = `Adjusting Difficulty`;
-                            difficultyModalText.textContent = `We'll step back to Easy to reinforce concepts.`;
-                        } else if (userScaffoldLevel === 1 && currentAccuracy <= 75) {
-                            // Case 2: Scaffold 1 + Accuracy <= 75% → Stay on Medium
-                            pendingNextDifficulty = 'Medium';
+                            difficultyModalText.textContent = `Great job! You've exceeded 75% accuracy and your ability score shows you're ready for Medium challenges.`;
+                            break;
+                        case 'STAY_EASY':
                             difficultyModalTitle.textContent = `Keep Practicing`;
-                            difficultyModalText.textContent = `You're making progress! Let's stay on Medium to build your skills. Current: ${currentAccuracy.toFixed(1)}%`;
-                        } else if (userScaffoldLevel === 0 && currentAccuracy >= 75) {
-                            // Case 3: Scaffold 0 + Accuracy >= 75% → Go to Hard
-                            pendingNextDifficulty = 'Hard';
+                            difficultyModalText.textContent = `Let's keep building confidence on Easy until you pass 75% accuracy with a higher ability score. Current accuracy: ${currentAccuracy.toFixed(1)}%.`;
+                            break;
+                        case 'PROMOTE_FROM_MEDIUM':
                             difficultyModalTitle.textContent = `Level Up!`;
-                            difficultyModalText.textContent = `You're doing well! You've reached 75% accuracy and are ready for Hard challenges.`;
-                        }
-                    } else if (currentDifficulty === 'Hard') {
-                        if (userScaffoldLevel === 2 || !canAdjustDifficulty) {
-                            pendingNextDifficulty = 'Medium';
+                            difficultyModalText.textContent = `Awesome work! Your accuracy and ability score qualify you for Hard questions.`;
+                            break;
+                        case 'DEMOTE_TO_EASY':
                             difficultyModalTitle.textContent = `Adjusting Difficulty`;
-                            if (userScaffoldLevel === 2) {
-                                difficultyModalText.textContent = `We'll step back to Medium to consolidate skills.`;
-                            } else {
-                                difficultyModalText.textContent = `Let's step back to Medium to improve accuracy. Current: ${currentAccuracy.toFixed(1)}%`;
-                            }
-                        } else {
-                            pendingNextDifficulty = 'Hard';
+                            difficultyModalText.textContent = `We'll step back to Easy for a bit to reinforce key concepts.`;
+                            break;
+                        case 'STAY_MEDIUM_PROGRESS':
+                            difficultyModalTitle.textContent = `Keep Practicing`;
+                            difficultyModalText.textContent = `You're progressing well! Stay on Medium and aim to push accuracy above 75%. Current: ${currentAccuracy.toFixed(1)}%.`;
+                            break;
+                        case 'STAY_MEDIUM_DEFAULT':
+                            difficultyModalTitle.textContent = `Hold Steady`;
+                            difficultyModalText.textContent = `We'll keep you on Medium while monitoring accuracy and ability improvements.`;
+                            break;
+                        case 'STAY_HARD_MASTERY':
                             difficultyModalTitle.textContent = `Keep Going!`;
-                            difficultyModalText.textContent = `You're staying on Hard — continue practicing to master these challenges.`;
-                        }
+                            difficultyModalText.textContent = `Your ability score supports challenging yourself on Hard. Keep the momentum!`;
+                            break;
+                        case 'DEMOTE_TO_MEDIUM':
+                            difficultyModalTitle.textContent = `Adjusting Difficulty`;
+                            difficultyModalText.textContent = `We'll return to Medium to rebuild accuracy before another Hard attempt.`;
+                            break;
+                        case 'STAY_HARD_DEFAULT':
+                        default:
+                            difficultyModalTitle.textContent = `Hold Steady`;
+                            difficultyModalText.textContent = `You'll stay on Hard for now. Focus on accuracy to secure your progress.`;
+                            break;
                     }
 
                     if (difficultyModal) {
