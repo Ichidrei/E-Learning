@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>InQUIZition — Admin Dashboard</title>
+  <link rel="stylesheet" href="static/css/admindashboard.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">IQ</div>
+        <div>
+          <h1>InQUIZition</h1>
+          <div class="muted">Admin dashboard</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="active">Overview</a>
+      </nav>
+
+      <div class="create-quiz-container">
+        <button class="btn" style="width:100%">Create Quiz</button>
+      </div>
+
+      <div class="sidebar-footer" id="sidebarFooterName">
+        Admin
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="search"></div>
+        <div class="controls">
+          <button class="btn" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+
+      <!-- Key metrics -->
+      <section class="grid">
+        <div class="card">
+          <h3>Total users</h3>
+          <div class="metric" id="totalUsers">1,248</div>
+          <div class="muted">All-time registered users</div>
+        </div>
+
+        <div class="card">
+          <h3>Active today</h3>
+          <div class="metric" id="activeToday">164</div>
+          <div class="muted">Users who attempted a quiz in last 24 hrs</div>
+        </div>
+
+        <div class="card">
+          <h3>Average score</h3>
+          <div class="metric" id="avgScore">78%</div>
+          <div class="muted">Average across all quizzes</div>
+        </div>
+
+        <div class="card">
+          <h3>Easy difficulty — average attempts</h3>
+          <div class="metric" id="easyAvg">28</div>
+          <div class="muted">Average number of attempts on 'Easy' before advancing</div>
+        </div>
+      </section>
+
+      <div class="dashboard-content">
+        <div class="main-left">
+          <div class="panel card">
+            <div class="panel-header">
+              <div>
+                <h2>Recent quiz sessions</h2>
+                <div class="muted">Latest attempts across users</div>
+              </div>
+              <div>
+                <select class="ghost" id="filterDifficulty">
+                  <option value="all">All difficulties</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-scroll" role="region" aria-label="Recent quiz sessions">
+              <table class="sessions-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Accuracy</th>
+                    <th>Difficulty</th>
+                    <th>Last activity</th>
+                  </tr>
+                </thead>
+                <tbody id="sessionsTable">
+                  <!-- populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel card">
+            <h3>Question pool overview</h3>
+            <div class="muted">Questions by tag and difficulty</div>
+            <div class="chip-container">
+              <div class="chip">Algebra — 124</div>
+              <div class="chip">Geometry — 86</div>
+              <div class="chip">Calculus — 40</div>
+              <div class="chip">Logic — 70</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="main-right">
+          <div class="card leaderboard-card">
+            <div class="panel-header">
+              <div>
+                <h3>Leaderboard</h3>
+                <div class="muted">Top performers (total points)</div>
+              </div>
+            </div>
+            <div class="leaderboard-scroll" role="region" aria-label="Leaderboard">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Student</th>
+                    <th>Points</th>
+                    <th>Accuracy</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardTableBody">
+                  <!-- populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card quick-stats">
+            <h3>Quick stats</h3>
+            <div class="quick-stats-list">
+              <div class="stat-row"><div class="muted">Hint usage</div><div>23%</div></div>
+              <div class="stat-row"><div class="muted">Retake rate</div><div>14%</div></div>
+              <div class="stat-row"><div class="muted">Questions flagged</div><div>12</div></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="logout-modal" id="adminLogoutModal" aria-hidden="true">
+    <div class="logout-modal-content">
+      <h4>Sign out?</h4>
+      <p class="muted">You will be returned to the login page.</p>
+      <div class="logout-modal-actions">
+        <button class="cancel" id="cancelAdminLogout">Cancel</button>
+        <button class="confirm" id="confirmAdminLogout">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="static/js/admindashboard.js"></script>
+</body>
+</html>

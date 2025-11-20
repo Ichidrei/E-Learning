@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // check user profile in public.user_profiles
             const { data: profile, error: profileError } = await supabase
                 .from('user_profiles')
-                .select('full_name,email')
+                .select('full_name,email,role')
                 .eq('id', data.user.id)
                 .single();
 
@@ -131,15 +131,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Determine redirect path based on role
+            const userRole = (profile?.role || 'student').toLowerCase();
+            const redirectPath = userRole === 'admin' ? '/admindashboard' : '/dashboard';
+
             // Login successful message and redirect
             if (message) {
                 message.style.color = 'green';
                 message.textContent = '✅ Login successful! Redirecting...';
             }
 
-            // Redirect all users to the student dashboard
             setTimeout(() => {
-                window.location.href = '/dashboard';
+                window.location.href = redirectPath;
             }, 1500);
         });
     } else {

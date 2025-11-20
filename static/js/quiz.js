@@ -56,6 +56,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let userScaffoldLevel = 0; // Default to Low (0) scaffold level
     let userAbilityScore = 0;  // Default ability score from user_progress
 
+    function getEffectiveScaffoldLevel(difficulty, scaffoldLevel) {
+        const diff = (difficulty || '').toString().toLowerCase();
+        const level = typeof scaffoldLevel === 'number' ? scaffoldLevel : 0;
+        if (diff === 'medium') return Math.min(level, 1);
+        if (diff === 'hard') return 0;
+        return level;
+    }
+
     // Function to fetch user's current scaffold level
     async function fetchUserScaffoldLevel() {
         try {
@@ -182,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to get the appropriate hint based on user's scaffold level
-    function getHintByScaffoldLevel(hints) {
+    function getHintByScaffoldLevel(hints, difficultyForHint) {
         if (!hints) return 'No hint available for this question.';
         
         // Map scaffold level to hint type
@@ -191,8 +199,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // scaffold_level 2 = High = third_hint (most advanced)
         let selectedHint;
         let hintType;
+        const effectiveScaffoldLevel = getEffectiveScaffoldLevel(difficultyForHint, userScaffoldLevel);
         
-        switch (userScaffoldLevel) {
+        switch (effectiveScaffoldLevel) {
             case 0:
                 selectedHint = hints.first_hint || 'No basic hint available.';
                 hintType = 'first_hint (Low scaffold)';
@@ -210,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 hintType = 'first_hint (default)';
         }
         
-        console.log(`🎯 Selected ${hintType} for scaffold level ${userScaffoldLevel}`);
+        console.log(`🎯 Selected ${hintType} for scaffold level ${userScaffoldLevel} (effective: ${effectiveScaffoldLevel} for ${difficultyForHint || 'unknown'} difficulty)`);
         return selectedHint;
     }
 
@@ -770,12 +779,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const difficultyColor = ((mq.difficulty || '').toLowerCase() === 'easy') ? '#388e3c'
             : ((mq.difficulty || '').toLowerCase() === 'medium') ? '#ff9800'
             : '#B0323A';
-        const scaffoldColor = (userScaffoldLevel === 2) ? '#B0323A' : (userScaffoldLevel === 1) ? '#ff9800' : '#388e3c';
+        const effectiveScaffoldLevel = getEffectiveScaffoldLevel(mq.difficulty, userScaffoldLevel);
+        const scaffoldColor = (effectiveScaffoldLevel === 2) ? '#B0323A' : (effectiveScaffoldLevel === 1) ? '#ff9800' : '#388e3c';
         questionLabel.innerHTML = `
             Difficulty: <span style='color:${difficultyColor};'>${mq.difficulty || ''}</span>
-            &nbsp;|&nbsp; Scaffold: <span class='scaffold-level-value' style='font-weight:700;'>${typeof userScaffoldLevel === 'number' ? userScaffoldLevel : 0}</span>
+            &nbsp;|&nbsp; Scaffold Level: <span class='scaffold-level-value' style='font-weight:700;color:${scaffoldColor};'>${typeof effectiveScaffoldLevel === 'number' ? effectiveScaffoldLevel : 0}</span>
         `;
-
+        
         // Main question as context (optional)
         let mainQHtml = mq.main_question ? `<div class='main-question-context'>${mq.main_question}</div>` : '';
 
@@ -798,7 +808,7 @@ document.addEventListener('DOMContentLoaded', function() {
             quizLeft.appendChild(hintBtn);
 
             // Get the appropriate hint for this user's scaffold level
-            const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints) : 'No hint available for this question.';
+            const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints, mq.difficulty) : 'No hint available for this question.';
             
             // Update inline help text (stays hidden until button click)
             try {
