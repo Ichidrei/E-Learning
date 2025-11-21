@@ -229,6 +229,14 @@ def signup():
     # This assumes you have a signup.html in the 'templates' folder.
     return render_template('signup.html')
 
+@app.route('/adminsignup')
+@app.route('/admin-signup')
+def admin_signup():
+    """
+    Renders the admin sign-up page.
+    """
+    return render_template('adminsignup.html')
+
 @app.route('/login')
 def login():
     return render_template('login.html')
@@ -240,6 +248,10 @@ def title():
 @app.route('/progress')
 def progress():
     return render_template('progress.html')
+
+@app.route('/admindashboard')
+def admin_dashboard():
+    return render_template('admindashboard.html')
 
 @app.route('/favicon.ico')
 def favicon():

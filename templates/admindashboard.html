@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>InQUIZition — Admin Dashboard</title>
+  <link rel="stylesheet" href="static/css/admindashboard.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-panel">
+        <div class="sidebar-panel__header">
+          <div class="logo">IQ</div>
+          <div>
+            <h1>InQUIZition</h1>
+            <div class="muted">Admin dashboard</div>
+          </div>
+        </div>
+
+        <div class="sidebar-panel__actions">
+          <button class="btn full-width" id="createQuizBtn">Create Quiz</button>
+          <button class="ghost logout-btn full-width" id="logoutBtn">Logout</button>
+        </div>
+
+        <div class="sidebar-panel__footer" id="sidebarFooterName">
+          Admin
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="dashboard-content">
+        <div class="main-left">
+          <div class="panel card">
+            <div class="panel-header">
+              <div>
+                <h2>Recent quiz sessions</h2>
+                <div class="muted">Latest attempts across users</div>
+              </div>
+            </div>
+
+            <div class="table-scroll" role="region" aria-label="Recent quiz sessions">
+              <table class="sessions-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Accuracy</th>
+                    <th>Mistake</th>
+                    <th>Difficulty</th>
+                    <th>Last activity</th>
+                  </tr>
+                </thead>
+                <tbody id="sessionsTable">
+                  <!-- populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <aside class="main-right">
+          <div class="card leaderboard-card">
+            <div class="panel-header">
+              <div>
+                <h3>Leaderboard</h3>
+                <div class="muted">Top performers (total points)</div>
+              </div>
+            </div>
+            <div class="leaderboard-scroll" role="region" aria-label="Leaderboard">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Student</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardTableBody">
+                  <!-- populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="create-quiz-modal" id="createQuizModal" aria-hidden="true">
+    <div class="create-quiz-modal__content" role="dialog" aria-modal="true" aria-labelledby="createQuizTitle">
+      <div class="create-quiz-modal__header">
+        <div>
+          <h3 id="createQuizTitle">Create a new quiz</h3>
+          <p class="muted">Add a main question and its subquestions</p>
+        </div>
+        <button type="button" class="modal-close" id="closeCreateQuizModal" aria-label="Close create quiz modal">×</button>
+      </div>
+
+      <form id="createQuizForm" class="create-quiz-form">
+        <div class="form-group">
+          <label for="quizDifficulty">Difficulty</label>
+          <select id="quizDifficulty" required>
+            <option value="easy" selected>Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="mainQuestionInput">Main question</label>
+          <textarea id="mainQuestionInput" rows="3" placeholder="Enter the main question prompt" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Subquestions</label>
+          <div class="muted small">Number of subquestions adjusts with difficulty (Easy/Medium = 2, Hard = 3).</div>
+          <div id="subQuestionsContainer" class="subquestions-container">
+            <!-- populated dynamically -->
+          </div>
+        </div>
+
+        <div id="createQuizError" class="form-error" role="alert"></div>
+
+        <div class="create-quiz-modal__footer">
+          <button type="button" class="ghost" id="cancelCreateQuiz">Cancel</button>
+          <button type="submit" class="btn" id="submitQuizBtn">Save Quiz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="logout-modal" id="adminLogoutModal" aria-hidden="true">
+    <div class="logout-modal-content">
+      <h4>Sign out?</h4>
+      <p class="muted">You will be returned to the login page.</p>
+      <div class="logout-modal-actions">
+        <button class="cancel" id="cancelAdminLogout">Cancel</button>
+        <button class="confirm" id="confirmAdminLogout">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="static/js/admindashboard.js"></script>
+</body>
+</html>

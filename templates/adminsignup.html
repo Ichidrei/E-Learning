@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signup</title>
+  <link rel="stylesheet" href="/static/css/signup.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script type="module" src="/static/js/adminsignup.js"></script>
+</head>
+<body>
+  <div class="branding">InQUIZition</div>
+  <div class="container">
+    <aside class="image-section">
+    </aside>
+    
+    <main class="login-section">
+      <div class="form-container">
+        <h2>Create an account</h2>
+        <p class="login-link" style="margin-bottom: 18px; text-align: left;">Already have an account? <a href="/login">Log in</a></p>
+        <form id="signupForm">
+          <div class="name-fields">
+            <input type="text" id="firstName" placeholder="First name" required />
+            <input type="text" id="lastName" placeholder="Last name" required />
+          </div>
+          <input type="email" id="email" placeholder="Email" required />
+          
+          <div class="password-field">
+            <input type="password" id="password" placeholder="Password" required />
+          </div>
+
+          <div class="password-field">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required />
+          </div>
+          
+          <div class="terms-agreement">
+            <label>
+              <input type="checkbox" id="termsCheckbox" required>
+              I agree with the <a href="{{ url_for('static', filename='policies/user-agreement.html') }}" id="termsLink" role="button">Terms & Conditions</a>
+            </label>
+          </div>
+
+         
+          <div class="buttons">
+            <button type="submit" class="signup-btn">Create account</button>
+          </div>
+        </form>
+
+        <div><p id="message" style="color: red;"></p></div>
+        
+      <div class="footer-links">
+        <a href="{{ url_for('static', filename='policies/copyright-policy.html') }}">Copyright Policy</a>
+        <a href="{{ url_for('static', filename='policies/privacy-policy.html') }}">Privacy Policy</a>
+        <a href="{{ url_for('static', filename='policies/user-agreement.html') }}">User Agreement</a>
+        <a href="{{ url_for('static', filename='policies/community-guidelines.html') }}">Community Guidelines</a>
+      </div>
+        <p class="copyright">E-Learning © 2025</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Terms & Conditions Modal -->
+  <div id="termsModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-overlay" id="termsOverlay"></div>
+    <div class="modal-content" role="document">
+      <button type="button" id="closeTermsModal" class="modal-close" aria-label="Close">×</button>
+      <h3>Terms & Conditions</h3>
+      <div class="modal-body">
+        <div class="modal-scroll">
+          <p><strong>Welcome to InQUIZition!</strong></p>
+          <p>By using this app, you agree to the following:</p>
+      
+          <ul>
+            <li>Use the app for learning and school-related activities only.</li>
+            <li>Do not attempt to harm, hack, or disrupt the system.</li>
+            <li>You are responsible for keeping your login information safe.</li>
+            <li>Do not upload or share anything inappropriate or copyrighted without permission.</li>
+            <li>We will do our best to keep your data secure based on our Privacy Policy.</li>
+            <li>If you break the rules, access to the app may be removed.</li>
+            <li>These terms may be updated over time. Continued use means you accept the changes.</li>
+          </ul>
+      
+          <p><strong>By continuing, you agree to these Terms & Conditions.</strong></p>
+      
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

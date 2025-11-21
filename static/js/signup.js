@@ -167,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
             last_name: lastName,
             full_name: fullName,
             gender: gender,
-            username: username
+            username: username,
+            role: 'student'
           }
         }
       });
