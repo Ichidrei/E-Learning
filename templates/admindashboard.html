@@ -32,7 +32,6 @@
 
     <main class="main">
       <div class="topbar">
-        <div class="search"></div>
         <div class="controls">
           <button class="btn" id="logoutBtn">Logout</button>
         </div>
@@ -101,14 +100,9 @@
           </div>
 
           <div class="panel card">
-            <h3>Question pool overview</h3>
-            <div class="muted">Questions by tag and difficulty</div>
-            <div class="chip-container">
-              <div class="chip">Algebra — 124</div>
-              <div class="chip">Geometry — 86</div>
-              <div class="chip">Calculus — 40</div>
-              <div class="chip">Logic — 70</div>
-            </div>
+            <h3>Theta Progress Overview</h3>
+            <div class="muted">Average θ (theta) for users’ first answers</div>
+            <canvas id="thetaChart" width="400" height="200"></canvas>
           </div>
         </div>
 

@@ -70,70 +70,58 @@ function renderSessions(filter = currentSessionFilter){
   tbody.appendChild(fragment);
 }
 
-export async function loadRecentSessions(filter = currentSessionFilter){
-  const tbody = document.getElementById('sessionsTable');
-  if (!tbody) return;
-
-  currentSessionFilter = filter || 'all';
-  sessionsLoaded = false;
-  tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading recent activity...</td></tr>`;
-
-  try {
-    const { data, error } = await supabase
-    .from('user_progress')
-    .select(`
-      id,
-      accuracy,
-      difficulty,
-      last_updated,
-      user_profiles!inner(first_name, last_name, full_name, username)
-    `) // <- Make sure NO trailing comma here
-    .order('last_updated', { ascending: false })
-    .limit(MAX_SESSIONS);
+export async function loadRecentSessions(filter = currentSessionFilter) {
+    const tbody = document.getElementById('sessionsTable');
+    if (!tbody) return;
   
-
-    if (error) throw error;
-
-    const rows = data ?? [];
-    const studentIds = [...new Set(rows
-      .map((row) => row.student_id)
-      .filter(Boolean))];
-
-    let profileMap = {};
-    if (studentIds.length){
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, first_name, last_name, full_name, username')
-        .in('id', studentIds);
-
-      if (profilesError) throw profilesError;
-
-      profileMap = (profiles ?? []).reduce((acc, profile) => {
-        acc[profile.id] = profile;
-        return acc;
-      }, {});
-    }
-
-    sessions.splice(0, sessions.length, ...(rows.map((row) => {
-      const difficultyLabel = row.difficulty?.trim() || '—';
-      return {
-        id: row.id,
-        name: getNameFromProfile(profileMap[row.student_id]),
-        accuracy: formatAccuracy(Number(row.accuracy)),
-        difficulty: difficultyLabel,
-        difficultyKey: difficultyLabel.toLowerCase(),
-        time: formatTimestamp(row.last_updated)
-      };
-    })));
-
-    sessionsLoaded = true;
-    renderSessions(currentSessionFilter);
-  } catch (err) {
-    console.error('Failed to load recent sessions:', err);
+    currentSessionFilter = filter || 'all';
     sessionsLoaded = false;
-    tbody.innerHTML = `<tr><td colspan="4" class="muted">Unable to load recent activity.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading recent activity...</td></tr>`;
+  
+    try {
+      // Fetch user_progress with related user_profiles in one query
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select(`
+          id,
+          accuracy,
+          difficulty,
+          last_updated,
+          user_profiles!inner(first_name, last_name, full_name, username)
+        `)
+        .order('last_updated', { ascending: false })
+        .limit(MAX_SESSIONS);
+  
+      if (error) throw error;
+  
+      if (!data || data.length === 0) {
+        sessionsLoaded = true;
+        tbody.innerHTML = `<tr><td colspan="4" class="muted">No recent activity yet.</td></tr>`;
+        return;
+      }
+  
+      // Map rows to sessions
+      sessions.splice(0, sessions.length, ...(data.map((row) => {
+        const difficultyLabel = (row.difficulty || '—').trim();
+        return {
+          id: row.id,
+          name: getNameFromProfile(row.user_profiles),
+          accuracy: formatAccuracy(Number(row.accuracy)),
+          difficulty: difficultyLabel,
+          difficultyKey: difficultyLabel.toLowerCase(),
+          time: formatTimestamp(row.last_updated)
+        };
+      })));
+  
+      sessionsLoaded = true;
+      renderSessions(currentSessionFilter);
+    } catch (err) {
+      console.error('Failed to load recent sessions:', err);
+      sessionsLoaded = false;
+      tbody.innerHTML = `<tr><td colspan="4" class="muted">Unable to load recent activity.</td></tr>`;
+    }
   }
-}
+  
 
 async function loadLeaderboard(limit = 40){
   const tbody = document.getElementById('leaderboardTableBody');
