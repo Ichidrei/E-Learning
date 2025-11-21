@@ -1,6 +1,12 @@
 import { supabase } from '../utils/supabaseClient.js';
 
 const MAX_SESSIONS = 200;
+const SUBQUESTION_COUNT_BY_DIFFICULTY = {
+  easy: 2,
+  medium: 2,
+  hard: 3
+};
+const CHOICES_PER_SUBQUESTION = 4;
 const sessions = [];
 let sessionsLoaded = false;
 let currentSessionFilter = 'all';
@@ -71,70 +77,88 @@ function renderSessions(filter = currentSessionFilter){
 }
 
 export async function loadRecentSessions(filter = currentSessionFilter) {
-    const tbody = document.getElementById('sessionsTable');
-    if (!tbody) return;
-  
-    currentSessionFilter = filter || 'all';
-    sessionsLoaded = false;
-    tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading recent activity...</td></tr>`;
-  
-    try {
-      // Fetch user_progress with related user_profiles in one query
-      const { data, error } = await supabase
-        .from('user_progress')
-        .select(`
-          id,
-          accuracy,
-          difficulty,
-          last_updated,
-          user_profiles!inner(first_name, last_name, full_name, username)
-        `)
-        .order('last_updated', { ascending: false })
-        .limit(MAX_SESSIONS);
-  
-      if (error) throw error;
-  
-      if (!data || data.length === 0) {
-        sessionsLoaded = true;
-        tbody.innerHTML = `<tr><td colspan="4" class="muted">No recent activity yet.</td></tr>`;
-        return;
-      }
-  
-      // Map rows to sessions
-      sessions.splice(0, sessions.length, ...(data.map((row) => {
-        const difficultyLabel = (row.difficulty || '—').trim();
-        return {
-          id: row.id,
-          name: getNameFromProfile(row.user_profiles),
-          accuracy: formatAccuracy(Number(row.accuracy)),
-          difficulty: difficultyLabel,
-          difficultyKey: difficultyLabel.toLowerCase(),
-          time: formatTimestamp(row.last_updated)
-        };
-      })));
-  
+  const tbody = document.getElementById('sessionsTable');
+  if (!tbody) return;
+
+  currentSessionFilter = filter || 'all';
+  sessionsLoaded = false;
+
+  tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading recent activity...</td></tr>`;
+
+  try {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select(`
+        student_id,
+        id,
+        accuracy,
+        difficulty,
+        last_updated,
+        user_profiles (
+          first_name,
+          last_name,
+          full_name,
+          username
+        )
+      `)
+      .order('last_updated', { ascending: false })
+      .limit(MAX_SESSIONS);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
       sessionsLoaded = true;
-      renderSessions(currentSessionFilter);
-    } catch (err) {
-      console.error('Failed to load recent sessions:', err);
-      sessionsLoaded = false;
-      tbody.innerHTML = `<tr><td colspan="4" class="muted">Unable to load recent activity.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="muted">No recent activity yet.</td></tr>`;
+      return;
     }
+
+    // Clear old sessions and populate new ones with the latest row per student
+    const seenStudents = new Set();
+    sessions.length = 0;
+
+    data.forEach((row) => {
+      const studentId = row.student_id || 'unknown';
+      if (seenStudents.has(studentId)) return;
+      seenStudents.add(studentId);
+
+      const profile = row.user_profiles || {}; // safety
+      const rawDifficulty = row.difficulty ? row.difficulty.toString().trim() : '—';
+      const normalizedDifficulty = rawDifficulty === '—'
+        ? rawDifficulty
+        : rawDifficulty.charAt(0).toUpperCase() + rawDifficulty.slice(1).toLowerCase();
+
+      sessions.push({
+        id: row.id,
+        name: getNameFromProfile(profile),
+        accuracy: formatAccuracy(Number(row.accuracy)),
+        difficulty: normalizedDifficulty,
+        difficultyKey: rawDifficulty.toLowerCase(),
+        time: formatTimestamp(row.last_updated)
+      });
+    });
+
+    sessionsLoaded = true;
+    renderSessions(currentSessionFilter);
+
+  } catch (err) {
+    console.error('Failed to load recent sessions:', err);
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">Unable to load recent activity.</td></tr>`;
   }
+}
+
   
 
 async function loadLeaderboard(limit = 40){
   const tbody = document.getElementById('leaderboardTableBody');
   if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="3" class="muted">Loading...</td></tr>`;
 
   try {
     const { data, error } = await supabase
       .from('leaderboard')
       .select(`
         username,
-        total_points,
-        average_accuracy
+        total_points
       `)
       .order('total_points', { ascending: false })
       .limit(limit);
@@ -142,7 +166,7 @@ async function loadLeaderboard(limit = 40){
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="muted">No leaderboard data yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="3" class="muted">No leaderboard data yet.</td></tr>`;
       return;
     }
 
@@ -157,13 +181,6 @@ async function loadLeaderboard(limit = 40){
         }
         return row.username || 'Unknown';
       })();
-      const accuracy = typeof row.average_accuracy === 'number'
-        ? (() => {
-            const value = Number(row.average_accuracy);
-            const percent = value > 1 ? value : value * 100;
-            return `${percent.toFixed(1)}%`;
-          })()
-        : '—';
       const points = Number(row.total_points || 0).toLocaleString();
 
       const tr = document.createElement('tr');
@@ -171,13 +188,12 @@ async function loadLeaderboard(limit = 40){
         <td>${index + 1}</td>
         <td>${name}</td>
         <td>${points}</td>
-        <td style="text-align:right;">${accuracy}</td>
       `;
       tbody.appendChild(tr);
     });
   } catch (err) {
     console.error('Failed to load leaderboard:', err);
-    tbody.innerHTML = `<tr><td colspan="4" class="muted">Unable to load leaderboard.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" class="muted">Unable to load leaderboard.</td></tr>`;
   }
 }
 
@@ -200,8 +216,6 @@ async function loadTotalUsers() {
     }
 }
   
-  
-  
 
 async function personalizeSidebar(){
   const footer = document.getElementById('sidebarFooterName');
@@ -211,7 +225,7 @@ async function personalizeSidebar(){
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!userId) {
-      footer.textContent = 'Admin';
+      footer.textContent = '';
       return;
     }
 
@@ -260,6 +274,244 @@ function initLogoutModal(){
   }
 }
 
+async function getNextId(tableName){
+  const { data, error } = await supabase
+    .from(tableName)
+    .select('id')
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data?.id ?? 0) + 1;
+}
+
+function getSubQuestionCount(difficulty){
+  return SUBQUESTION_COUNT_BY_DIFFICULTY[difficulty?.toLowerCase()] ?? SUBQUESTION_COUNT_BY_DIFFICULTY.easy;
+}
+
+function createSubQuestionFieldset(stepNumber){
+  const fieldset = document.createElement('fieldset');
+  fieldset.classList.add('subquestion-fieldset');
+  fieldset.dataset.step = String(stepNumber);
+
+  const choicesInputs = Array.from({ length: CHOICES_PER_SUBQUESTION }, (_, idx) => `
+      <label>
+        Choice ${idx + 1}
+        <input type="text" data-field="choice" placeholder="Choice ${idx + 1}" required />
+      </label>
+    `).join('');
+
+  fieldset.innerHTML = `
+    <legend>Subquestion ${stepNumber}</legend>
+    <label>
+      Prompt
+      <textarea rows="2" data-field="question" placeholder="Enter the subquestion prompt" required></textarea>
+    </label>
+    <div class="choices-grid">
+      ${choicesInputs}
+    </div>
+    <div class="inline-fields">
+      <label>
+        Correct answer
+        <input type="text" data-field="correct" placeholder="Exact correct answer" required />
+      </label>
+      <label>
+        Hint ID (optional)
+        <input type="number" min="1" data-field="hint" placeholder="e.g. 42" />
+      </label>
+    </div>
+    <label>
+      Incorrect feedback (optional)
+      <input type="text" data-field="incorrectFeedback" placeholder="Shown when the answer is wrong" />
+    </label>
+  `;
+
+  return fieldset;
+}
+
+function renderSubQuestionFields(container, count){
+  if (!container) return;
+  container.innerHTML = '';
+  for (let step = 1; step <= count; step += 1){
+    container.appendChild(createSubQuestionFieldset(step));
+  }
+}
+
+function collectSubQuestionData(container){
+  if (!container) return { valid: false, error: 'Missing subquestion container.' };
+  const fieldsets = Array.from(container.querySelectorAll('.subquestion-fieldset'));
+  if (!fieldsets.length){
+    return { valid: false, error: 'At least one subquestion is required.' };
+  }
+
+  const subQuestions = [];
+
+  for (const fieldset of fieldsets){
+    const stepLabel = fieldset.dataset.step || '?';
+    const question = fieldset.querySelector('[data-field="question"]')?.value.trim();
+    if (!question){
+      return { valid: false, error: `Subquestion ${stepLabel} needs a prompt.` };
+    }
+
+    const choiceInputs = Array.from(fieldset.querySelectorAll('[data-field="choice"]'));
+    const choices = choiceInputs.map((input) => input.value.trim());
+    if (choices.some((choice) => !choice)){
+      return { valid: false, error: `Please fill all choices for subquestion ${stepLabel}.` };
+    }
+
+    const correctAnswer = fieldset.querySelector('[data-field="correct"]')?.value.trim();
+    if (!correctAnswer){
+      return { valid: false, error: `Please provide the correct answer for subquestion ${stepLabel}.` };
+    }
+
+    const hintRaw = fieldset.querySelector('[data-field="hint"]')?.value.trim();
+    let hintId = null;
+    if (hintRaw){
+      const parsed = Number(hintRaw);
+      if (Number.isNaN(parsed) || parsed <= 0){
+        return { valid: false, error: `Hint ID must be a positive number for subquestion ${stepLabel}.` };
+      }
+      hintId = parsed;
+    }
+
+    const incorrectFeedback = fieldset.querySelector('[data-field="incorrectFeedback"]')?.value.trim() || null;
+
+    subQuestions.push({
+      question,
+      choices,
+      correctAnswer,
+      hintId,
+      incorrectFeedback
+    });
+  }
+
+  return { valid: true, items: subQuestions };
+}
+
+function initCreateQuizModal(){
+  const modal = document.getElementById('createQuizModal');
+  const createQuizBtn = document.getElementById('createQuizBtn');
+  const form = document.getElementById('createQuizForm');
+  const difficultySelect = document.getElementById('quizDifficulty');
+  const subQuestionsContainer = document.getElementById('subQuestionsContainer');
+  const errorBox = document.getElementById('createQuizError');
+  const submitBtn = document.getElementById('submitQuizBtn');
+  const cancelBtn = document.getElementById('cancelCreateQuiz');
+  const closeBtn = document.getElementById('closeCreateQuizModal');
+  const mainQuestionInput = document.getElementById('mainQuestionInput');
+
+  if (!modal || !createQuizBtn || !form || !difficultySelect || !subQuestionsContainer || !submitBtn || !mainQuestionInput){
+    return;
+  }
+
+  let isSubmitting = false;
+
+  const resetFormState = () => {
+    form.reset();
+    difficultySelect.value = 'easy';
+    renderSubQuestionFields(subQuestionsContainer, getSubQuestionCount(difficultySelect.value));
+    if (errorBox) errorBox.textContent = '';
+  };
+
+  const openModal = () => {
+    resetFormState();
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    mainQuestionInput.focus();
+  };
+
+  const closeModal = () => {
+    if (isSubmitting) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  createQuizBtn.addEventListener('click', openModal);
+  cancelBtn?.addEventListener('click', closeModal);
+  closeBtn?.addEventListener('click', closeModal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeModal();
+  });
+
+  difficultySelect.addEventListener('change', () => {
+    renderSubQuestionFields(subQuestionsContainer, getSubQuestionCount(difficultySelect.value));
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const mainQuestion = mainQuestionInput.value.trim();
+    if (!mainQuestion){
+      if (errorBox) errorBox.textContent = 'Main question is required.';
+      mainQuestionInput.focus();
+      return;
+    }
+
+    const { valid, error, items } = collectSubQuestionData(subQuestionsContainer);
+    if (!valid){
+      if (errorBox) errorBox.textContent = error;
+      return;
+    }
+
+    const difficultyValue = difficultySelect.value.toLowerCase();
+    const difficultyFormatted = difficultyValue.charAt(0).toUpperCase() + difficultyValue.slice(1);
+
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+    if (errorBox) errorBox.textContent = '';
+
+    try {
+      const nextMainId = await getNextId('main_questions');
+
+      const { data: mainInsert, error: mainError } = await supabase
+        .from('main_questions')
+        .insert({
+          id: nextMainId,
+          main_question: mainQuestion,
+          difficulty: difficultyFormatted
+        })
+        .select('id')
+        .single();
+
+      if (mainError) throw mainError;
+      const mainQuestionId = mainInsert?.id;
+      if (!mainQuestionId) throw new Error('Main question was created without an ID.');
+
+      const nextSubIdStart = await getNextId('sub_questions');
+
+      const payload = items.map((item, index) => ({
+        id: nextSubIdStart + index,
+        main_question_id: mainQuestionId,
+        step_number: index + 1,
+        question: item.question,
+        choices: item.choices,
+        correct_answer: item.correctAnswer,
+        hint_id: item.hintId,
+        incorrect_feedback: item.incorrectFeedback
+      }));
+
+      const { error: subInsertError } = await supabase
+        .from('sub_questions')
+        .insert(payload);
+
+      if (subInsertError) throw subInsertError;
+
+      closeModal();
+      alert('Quiz created successfully.');
+    } catch (err) {
+      console.error('Failed to create quiz:', err);
+      if (errorBox) errorBox.textContent = err.message || 'Failed to create quiz. Please try again.';
+    } finally {
+      isSubmitting = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save Quiz';
+    }
+  });
+}
+
 function initDashboard(){
   personalizeSidebar();
   loadTotalUsers();          // Load total users
@@ -275,6 +527,7 @@ function initDashboard(){
   }
 
   initLogoutModal();
+  initCreateQuizModal();
 }
 
 document.addEventListener('DOMContentLoaded', initDashboard);

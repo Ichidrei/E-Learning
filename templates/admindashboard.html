@@ -17,12 +17,9 @@
         </div>
       </div>
 
-      <nav class="nav">
-        <a class="active">Overview</a>
-      </nav>
-
       <div class="create-quiz-container">
-        <button class="btn" style="width:100%">Create Quiz</button>
+        <button class="btn full-width" id="createQuizBtn">Create Quiz</button>
+        <button class="ghost logout-btn full-width" id="logoutBtn">Logout</button>
       </div>
 
       <div class="sidebar-footer" id="sidebarFooterName">
@@ -31,39 +28,6 @@
     </aside>
 
     <main class="main">
-      <div class="topbar">
-        <div class="controls">
-          <button class="btn" id="logoutBtn">Logout</button>
-        </div>
-      </div>
-
-      <!-- Key metrics -->
-      <section class="grid">
-        <div class="card">
-          <h3>Total users</h3>
-          <div class="metric" id="totalUsers">1,248</div>
-          <div class="muted">All-time registered users</div>
-        </div>
-
-        <div class="card">
-          <h3>Active today</h3>
-          <div class="metric" id="activeToday">164</div>
-          <div class="muted">Users who attempted a quiz in last 24 hrs</div>
-        </div>
-
-        <div class="card">
-          <h3>Average score</h3>
-          <div class="metric" id="avgScore">78%</div>
-          <div class="muted">Average across all quizzes</div>
-        </div>
-
-        <div class="card">
-          <h3>Easy difficulty — average attempts</h3>
-          <div class="metric" id="easyAvg">28</div>
-          <div class="muted">Average number of attempts on 'Easy' before advancing</div>
-        </div>
-      </section>
-
       <div class="dashboard-content">
         <div class="main-left">
           <div class="panel card">
@@ -71,14 +35,6 @@
               <div>
                 <h2>Recent quiz sessions</h2>
                 <div class="muted">Latest attempts across users</div>
-              </div>
-              <div>
-                <select class="ghost" id="filterDifficulty">
-                  <option value="all">All difficulties</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
               </div>
             </div>
 
@@ -99,11 +55,6 @@
             </div>
           </div>
 
-          <div class="panel card">
-            <h3>Theta Progress Overview</h3>
-            <div class="muted">Average θ (theta) for users’ first answers</div>
-            <canvas id="thetaChart" width="400" height="200"></canvas>
-          </div>
         </div>
 
         <aside class="main-right">
@@ -121,7 +72,6 @@
                     <th>Rank</th>
                     <th>Student</th>
                     <th>Points</th>
-                    <th>Accuracy</th>
                   </tr>
                 </thead>
                 <tbody id="leaderboardTableBody">
@@ -130,18 +80,52 @@
               </table>
             </div>
           </div>
-
-          <div class="card quick-stats">
-            <h3>Quick stats</h3>
-            <div class="quick-stats-list">
-              <div class="stat-row"><div class="muted">Hint usage</div><div>23%</div></div>
-              <div class="stat-row"><div class="muted">Retake rate</div><div>14%</div></div>
-              <div class="stat-row"><div class="muted">Questions flagged</div><div>12</div></div>
-            </div>
-          </div>
         </aside>
       </div>
     </main>
+  </div>
+
+  <div class="create-quiz-modal" id="createQuizModal" aria-hidden="true">
+    <div class="create-quiz-modal__content" role="dialog" aria-modal="true" aria-labelledby="createQuizTitle">
+      <div class="create-quiz-modal__header">
+        <div>
+          <h3 id="createQuizTitle">Create a new quiz</h3>
+          <p class="muted">Add a main question and its subquestions</p>
+        </div>
+        <button type="button" class="modal-close" id="closeCreateQuizModal" aria-label="Close create quiz modal">×</button>
+      </div>
+
+      <form id="createQuizForm" class="create-quiz-form">
+        <div class="form-group">
+          <label for="quizDifficulty">Difficulty</label>
+          <select id="quizDifficulty" required>
+            <option value="easy" selected>Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="mainQuestionInput">Main question</label>
+          <textarea id="mainQuestionInput" rows="3" placeholder="Enter the main question prompt" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Subquestions</label>
+          <div class="muted small">Number of subquestions adjusts with difficulty (Easy/Medium = 2, Hard = 3).</div>
+          <div id="subQuestionsContainer" class="subquestions-container">
+            <!-- populated dynamically -->
+          </div>
+        </div>
+
+        <div id="createQuizError" class="form-error" role="alert"></div>
+
+        <div class="create-quiz-modal__footer">
+          <button type="button" class="ghost" id="cancelCreateQuiz">Cancel</button>
+          <button type="submit" class="btn" id="submitQuizBtn">Save Quiz</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <div class="logout-modal" id="adminLogoutModal" aria-hidden="true">
