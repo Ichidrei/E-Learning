@@ -151,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
         navigateToSignupBtn.addEventListener('click', () => {
             window.location.href = '/signup';
         });
-    } else {
-        console.warn("Warning: navigateToSignupBtn element not found in the DOM.");
     }
 
     // Event listener for the "Sign up" link (to navigate to signup.html)
