@@ -12,7 +12,8 @@ class ProgressManager {
       answeredQuestions: new Set(), // Track which questions have been answered
       questionHistory: [], // Detailed history of each question attempt
       questionMastery: {}, // Track mastery status: {questionId: {correctCount: 0, lastAttempt: 'correct/incorrect'}}
-      currentDifficulty: 'easy' // Track current difficulty level
+      currentDifficulty: 'easy', // Track current difficulty level
+      abilityScore: 0
     };
     this.loadProgress();
   }
@@ -274,7 +275,8 @@ class ProgressManager {
       answeredQuestions: new Set(),
       questionHistory: [],
       questionMastery: {},
-      currentDifficulty: 'easy'
+      currentDifficulty: 'easy',
+      abilityScore: 0
     };
     localStorage.removeItem('quizProgress');
   }
@@ -289,7 +291,7 @@ class ProgressManager {
     }
     const { data: latestProgress, error } = await supabase
       .from('user_progress')
-      .select('accuracy, correct_answers, mistake, difficulty')
+      .select('accuracy, correct_answers, mistake, difficulty, ability')
       .eq('student_id', studentId)
       .order('last_updated', { ascending: false })
       .limit(1)
@@ -304,6 +306,7 @@ class ProgressManager {
       this.userProgress.correctAnswers = 0;
       this.userProgress.accuracy = 0;
       this.userProgress.completionPercentage = 0;
+      this.userProgress.abilityScore = 0;
       this.saveProgress();
       return;
     }
@@ -318,6 +321,7 @@ class ProgressManager {
     this.userProgress.accuracy = Math.max(0, Math.min(100, Math.round(accuracyDecimal * 100)));
     this.userProgress.completionPercentage = this.userProgress.accuracy;
     this.userProgress.currentDifficulty = (latestProgress.difficulty || 'easy').toLowerCase();
+    this.userProgress.abilityScore = typeof latestProgress.ability === 'number' ? latestProgress.ability : 0;
     this.saveProgress();
   }
 }
@@ -355,39 +359,27 @@ function hideLoadingPopup() {
   document.getElementById('loadingPopup').classList.add('hidden');
 }
 
-// Compute recommended starting difficulty based on last difficulty, scaffold level, and accuracy
-function computeRecommendedDifficulty(lastDifficulty, scaffoldLevel, accuracyDecimal) {
-  const accPercent = accuracyDecimal * 100;
-  const canAdjust = (scaffoldLevel === 0 || scaffoldLevel === 1) && accPercent >= 75;
+// Compute recommended starting difficulty using ability score rules
+function computeRecommendedDifficulty(lastDifficulty, abilityScore, accuracyDecimal) {
   const current = (lastDifficulty || 'easy').toLowerCase();
+  const ability = typeof abilityScore === 'number' ? abilityScore : 0;
+  const accPercent = (typeof accuracyDecimal === 'number' ? accuracyDecimal : 0) * 100;
+
   if (current === 'easy') {
-    if (scaffoldLevel === 2 || !canAdjust) return 'Easy';
+    return (accPercent > 75 && ability === 1) ? 'Medium' : 'Easy';
+  }
+
+  if (current === 'medium') {
+    if (ability === -1) return 'Easy';
+    if (accPercent > 75 && ability === 1) return 'Hard';
+    if (accPercent < 75 && ability === 0) return 'Medium';
     return 'Medium';
   }
-  if (current === 'medium') {
-    if (scaffoldLevel === 2 || !canAdjust) return 'Easy';
-    return 'Hard';
-  }
-  // current === 'hard'
-  if (scaffoldLevel === 2 || !canAdjust) return 'Medium';
-  return 'Hard';
-}
 
-async function fetchUserScaffoldLevel() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const studentId = session?.user?.id || null;
-    if (!studentId) return 0;
-    const { data: userProfile, error } = await supabase
-      .from('user_profiles')
-      .select('scaffold_level')
-      .eq('id', studentId)
-      .single();
-    if (error) return 0;
-    return typeof userProfile?.scaffold_level === 'number' ? userProfile.scaffold_level : 0;
-  } catch (_) {
-    return 0;
-  }
+  // current === 'hard'
+  if (accPercent > 75 && (ability === 1 || ability === 0)) return 'Hard';
+  if (ability === -1) return 'Medium';
+  return 'Hard';
 }
 
 async function startQuiz() {
@@ -397,19 +389,17 @@ async function startQuiz() {
     const studentId = session?.user?.id || null;
     let startingDifficulty = 'Easy';
     if (studentId) {
-      const [{ data: latestProgress }, scaffoldLevel] = await Promise.all([
-        supabase
-          .from('user_progress')
-          .select('accuracy, difficulty')
-          .eq('student_id', studentId)
-          .order('last_updated', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        fetchUserScaffoldLevel()
-      ]);
+      const { data: latestProgress } = await supabase
+        .from('user_progress')
+        .select('accuracy, difficulty, ability')
+        .eq('student_id', studentId)
+        .order('last_updated', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       const lastDifficulty = latestProgress?.difficulty || 'easy';
       const lastAccuracyDecimal = typeof latestProgress?.accuracy === 'number' ? latestProgress.accuracy : 0;
-      startingDifficulty = computeRecommendedDifficulty(lastDifficulty, scaffoldLevel, lastAccuracyDecimal);
+      const abilityScore = typeof latestProgress?.ability === 'number' ? latestProgress.ability : 0;
+      startingDifficulty = computeRecommendedDifficulty(lastDifficulty, abilityScore, lastAccuracyDecimal);
     }
   
     // Persist recommended difficulty for the quiz page to read
