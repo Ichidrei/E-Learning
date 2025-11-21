@@ -9,21 +9,23 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="brand">
-        <div class="logo">IQ</div>
-        <div>
-          <h1>InQUIZition</h1>
-          <div class="muted">Admin dashboard</div>
+      <div class="sidebar-panel">
+        <div class="sidebar-panel__header">
+          <div class="logo">IQ</div>
+          <div>
+            <h1>InQUIZition</h1>
+            <div class="muted">Admin dashboard</div>
+          </div>
         </div>
-      </div>
 
-      <div class="create-quiz-container">
-        <button class="btn full-width" id="createQuizBtn">Create Quiz</button>
-        <button class="ghost logout-btn full-width" id="logoutBtn">Logout</button>
-      </div>
+        <div class="sidebar-panel__actions">
+          <button class="btn full-width" id="createQuizBtn">Create Quiz</button>
+          <button class="ghost logout-btn full-width" id="logoutBtn">Logout</button>
+        </div>
 
-      <div class="sidebar-footer" id="sidebarFooterName">
-        Admin
+        <div class="sidebar-panel__footer" id="sidebarFooterName">
+          Admin
+        </div>
       </div>
     </aside>
 
@@ -44,6 +46,7 @@
                   <tr>
                     <th>Student</th>
                     <th>Accuracy</th>
+                    <th>Mistake</th>
                     <th>Difficulty</th>
                     <th>Last activity</th>
                   </tr>
