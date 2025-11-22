@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let roundCorrect = true;
     let subQuestionResults = [];
     let hintsUsedSet = new Set(); // Track which sub-question IDs have used hints
+    let hardHintLockActive = false; // Controls hint availability on repeat Hard attempts
 
     // --- New Mastery Logic Variables ---
     const easyAnswersNeeded = 5;
@@ -53,8 +54,55 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // --- User Scaffold Level & Ability Score ---
-    let userScaffoldLevel = 0; // Default to Low (0) scaffold level
+    let userScaffoldLevel = null; // Null until fetched
+    let scaffoldLevelAvailable = false;
     let userAbilityScore = 0;  // Default ability score from user_progress
+
+    let lastCompletedDifficulty = null;
+
+    function normalizeDifficultyName(value) {
+        if (!value && value !== 0) return null;
+        const diff = value.toString().trim().toLowerCase();
+        if (diff === 'easy') return 'Easy';
+        if (diff === 'medium' || diff === 'average') return 'Medium';
+        if (diff === 'hard' || diff === 'difficult') return 'Hard';
+        return null;
+    }
+
+    function updateHardHintLockState() {
+        hardHintLockActive = (currentDifficulty === 'Hard' && lastCompletedDifficulty === 'Hard');
+        console.log('🔐 Hard hint lock state:', { hardHintLockActive, currentDifficulty, lastCompletedDifficulty });
+    }
+
+    function setLastCompletedDifficulty(diff, skipLockUpdate = false) {
+        const normalized = normalizeDifficultyName(diff);
+        lastCompletedDifficulty = normalized;
+        try {
+            if (normalized) {
+                localStorage.setItem('lastCompletedDifficulty', normalized);
+            } else {
+                localStorage.removeItem('lastCompletedDifficulty');
+            }
+        } catch (_) {}
+        if (!skipLockUpdate) {
+            updateHardHintLockState();
+        }
+    }
+
+    (function initLastCompletedDifficulty() {
+        try {
+            const stored = localStorage.getItem('lastCompletedDifficulty');
+            setLastCompletedDifficulty(stored, true);
+        } catch (_) {
+            lastCompletedDifficulty = null;
+        }
+    })();
+
+    function isHardHintDisabledForDifficulty(difficulty) {
+        const diff = (difficulty || '').toLowerCase();
+        if (diff !== 'hard') return false;
+        return hardHintLockActive && typeof userScaffoldLevel === 'number' && userScaffoldLevel === 0;
+    }
 
     function getEffectiveScaffoldLevel(difficulty, scaffoldLevel) {
         const diff = (difficulty || '').toString().toLowerCase();
@@ -72,7 +120,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!studentId) {
                 console.log('User not logged in, using default scaffold level (0)');
-                userScaffoldLevel = 0;
+                userScaffoldLevel = null;
+                scaffoldLevelAvailable = false;
                 return;
             }
 
@@ -85,19 +134,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (error) {
                 console.error('❌ Error fetching user scaffold level:', error);
-                userScaffoldLevel = 0; // Default to Low (0) if database error
+                userScaffoldLevel = null; // Unknown due to database error
+                scaffoldLevelAvailable = false;
             } else if (userProfile && userProfile.scaffold_level !== null) {
                 // Use the actual scaffold level from the database
                 userScaffoldLevel = userProfile.scaffold_level;
+                scaffoldLevelAvailable = true;
                 console.log(`✅ User scaffold level from database: ${userScaffoldLevel}`);
             } else {
                 // If no scaffold level is set in database, use default (0)
                 console.log('No scaffold level found in database, using default (0)');
-                userScaffoldLevel = 0;
+                userScaffoldLevel = null;
+                scaffoldLevelAvailable = false;
             }
         } catch (err) {
             console.error('Exception fetching user scaffold level:', err);
-            userScaffoldLevel = 0; // Default to Low (0) if any exception occurs
+            userScaffoldLevel = null; // Unknown if any exception occurs
+            scaffoldLevelAvailable = false;
         }
     }
 
@@ -190,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to get the appropriate hint based on user's scaffold level
-    function getHintByScaffoldLevel(hints, difficultyForHint) {
+    function getHintByScaffoldLevel(hints, difficultyForHint, overrideLevel = null) {
         if (!hints) return 'No hint available for this question.';
         
         // Map scaffold level to hint type
@@ -199,7 +252,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // scaffold_level 2 = High = third_hint (most advanced)
         let selectedHint;
         let hintType;
-        const effectiveScaffoldLevel = getEffectiveScaffoldLevel(difficultyForHint, userScaffoldLevel);
+        const selectedLevel = (typeof overrideLevel === 'number') ? overrideLevel : userScaffoldLevel;
+        const effectiveScaffoldLevel = getEffectiveScaffoldLevel(difficultyForHint, selectedLevel);
         
         switch (effectiveScaffoldLevel) {
             case 0:
@@ -317,7 +371,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to insert user progress data into database
-    async function insertUserProgress(difficulty) {
+    async function insertUserProgress(difficulty, options = {}) {
+        const { markCompletion = true } = options || {};
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const studentId = session?.user?.id || null;
@@ -371,6 +426,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('❌ Error inserting user progress:', insertError);
             } else {
                 console.log('✅ Successfully inserted user progress data with scaffold level:', scaffoldLevelToInsert);
+                if (markCompletion) {
+                    setLastCompletedDifficulty(difficulty);
+                }
             }
 
         } catch (err) {
@@ -409,6 +467,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`✅ Scaffold level updated to: ${predictedScaffoldLevel}`);
                 // Update the local variable as well
                 userScaffoldLevel = predictedScaffoldLevel;
+                scaffoldLevelAvailable = typeof predictedScaffoldLevel === 'number';
                 // Return the predicted scaffold level
                 return predictedScaffoldLevel;
             } else {
@@ -714,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`Fetching sub-questions for main question ${mq.id}...`);
                 const { data: subs, error: subErr } = await supabase
                     .from('sub_questions')
-                    .select('id, main_question_id, step_number, question, choices, correct_answer, misconception_tag, hint_id, incorrect_feedback, hints(first_hint, second_hint, third_hint)')
+                    .select('id, main_question_id, step_number, question, choices, correct_answer, hint_id, incorrect_feedback, hints(first_hint, second_hint, third_hint)')
                     .eq('main_question_id', mq.id)
                     .order('step_number', { ascending: true });
 
@@ -779,11 +838,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const difficultyColor = ((mq.difficulty || '').toLowerCase() === 'easy') ? '#388e3c'
             : ((mq.difficulty || '').toLowerCase() === 'medium') ? '#ff9800'
             : '#B0323A';
-        const effectiveScaffoldLevel = getEffectiveScaffoldLevel(mq.difficulty, userScaffoldLevel);
+        const disableHintsForThisQuestion = isHardHintDisabledForDifficulty(mq.difficulty);
+        const effectiveScaffoldLevel = scaffoldLevelAvailable
+            ? getEffectiveScaffoldLevel(mq.difficulty, userScaffoldLevel)
+            : null;
         const scaffoldColor = (effectiveScaffoldLevel === 2) ? '#B0323A' : (effectiveScaffoldLevel === 1) ? '#ff9800' : '#388e3c';
+        const scaffoldHtml = (scaffoldLevelAvailable && typeof effectiveScaffoldLevel === 'number' && !disableHintsForThisQuestion)
+            ? `&nbsp;|&nbsp; Scaffold Level: <span class='scaffold-level-value' style='font-weight:700;color:${scaffoldColor};'>${effectiveScaffoldLevel}</span>`
+            : '';
         questionLabel.innerHTML = `
             Difficulty: <span style='color:${difficultyColor};'>${mq.difficulty || ''}</span>
-            &nbsp;|&nbsp; Scaffold Level: <span class='scaffold-level-value' style='font-weight:700;color:${scaffoldColor};'>${typeof effectiveScaffoldLevel === 'number' ? effectiveScaffoldLevel : 0}</span>
+            ${scaffoldHtml}
         `;
         
         // Main question as context (optional)
@@ -800,57 +865,74 @@ document.addEventListener('DOMContentLoaded', function() {
             subQDiv.className = 'sub-question-text';
             subQDiv.innerHTML = sq.question;
             quizLeft.appendChild(subQDiv);
-            // Hint button
-            const hintBtn = document.createElement('div');
-            hintBtn.className = 'quiz-help-icon';
-            hintBtn.title = 'Hint';
-            hintBtn.innerHTML = '?<span class="quiz-hint-label" style="display:none;">Hint</span>';
-            quizLeft.appendChild(hintBtn);
+            const shouldForceBasicHint = !disableHintsForThisQuestion
+                && hardHintLockActive
+                && (mq.difficulty || '').toLowerCase() === 'hard'
+                && typeof userScaffoldLevel === 'number'
+                && userScaffoldLevel !== 0;
 
-            // Get the appropriate hint for this user's scaffold level
-            const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints, mq.difficulty) : 'No hint available for this question.';
-            
-            // Update inline help text (stays hidden until button click)
-            try {
-                const inlineHelp = document.getElementById('quiz-inline-help');
-                const inlineText = inlineHelp ? inlineHelp.querySelector('.quiz-inline-help-text') : null;
-                if (inlineHelp && inlineText) {
-                    inlineText.textContent = appropriateHint;
-                    // Keep hidden by default; visibility is toggled on button click
-                    inlineHelp.classList.remove('visible');
-                }
-            } catch (_) {}
+            if (!disableHintsForThisQuestion) {
+                // Hint button
+                const hintBtn = document.createElement('div');
+                hintBtn.className = 'quiz-help-icon';
+                hintBtn.title = 'Hint';
+                hintBtn.innerHTML = '?<span class="quiz-hint-label" style="display:none;">Hint</span>';
+                quizLeft.appendChild(hintBtn);
 
-            // Add inline hint behavior
-            const quizHintLabel = hintBtn.querySelector('.quiz-hint-label');
-            
-            // Add click event listener to the hint button
-            hintBtn.addEventListener('click', () => {
-                recordHintUsage(sq.id); // Record hint usage
-                // Always show inline help below the hint button
-                let inlineHelp = document.getElementById('quiz-inline-help');
-                if (!inlineHelp) {
-                    inlineHelp = document.createElement('div');
-                    inlineHelp.id = 'quiz-inline-help';
-                    inlineHelp.className = 'quiz-inline-help';
-                    inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
-                    const left = document.querySelector('.quiz-left');
-                    if (left) left.appendChild(inlineHelp);
+                // Get the appropriate hint for this user's scaffold level
+                const appropriateHint = sq.hints ? getHintByScaffoldLevel(sq.hints, mq.difficulty, shouldForceBasicHint ? 0 : null) : 'No hint available for this question.';
+                
+                // Update inline help text (stays hidden until button click)
+                try {
+                    const inlineHelp = document.getElementById('quiz-inline-help');
+                    const inlineText = inlineHelp ? inlineHelp.querySelector('.quiz-inline-help-text') : null;
+                    if (inlineHelp && inlineText) {
+                        inlineText.textContent = appropriateHint;
+                        // Keep hidden by default; visibility is toggled on button click
+                        inlineHelp.classList.remove('visible');
+                    }
+                } catch (_) {}
+
+                // Add inline hint behavior
+                const quizHintLabel = hintBtn.querySelector('.quiz-hint-label');
+                
+                // Add click event listener to the hint button
+                hintBtn.addEventListener('click', () => {
+                    recordHintUsage(sq.id); // Record hint usage
+                    // Always show inline help below the hint button
+                    let inlineHelp = document.getElementById('quiz-inline-help');
+                    if (!inlineHelp) {
+                        inlineHelp = document.createElement('div');
+                        inlineHelp.id = 'quiz-inline-help';
+                        inlineHelp.className = 'quiz-inline-help';
+                        inlineHelp.innerHTML = '<div class="quiz-inline-help-title">Hint</div><div class="quiz-inline-help-text"></div>';
+                        const left = document.querySelector('.quiz-left');
+                        if (left) left.appendChild(inlineHelp);
+                    }
+                    const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
+                    if (inlineText) inlineText.textContent = appropriateHint;
+                    inlineHelp.classList.add('visible');
+                    inlineHelp.style.display = 'block';
+                });
+                
+                // Add hover effects for hint button
+                if (quizHintLabel) {
+                    hintBtn.addEventListener('mouseenter', () => {
+                        quizHintLabel.style.display = 'inline-block';
+                    });
+                    hintBtn.addEventListener('mouseleave', () => {
+                        quizHintLabel.style.display = 'none';
+                    });
                 }
-                const inlineText = inlineHelp.querySelector('.quiz-inline-help-text');
-                if (inlineText) inlineText.textContent = appropriateHint;
-                inlineHelp.classList.add('visible');
-                inlineHelp.style.display = 'block';
-            });
-            
-            // Add hover effects for hint button
-            if (quizHintLabel) {
-                hintBtn.addEventListener('mouseenter', () => {
-                    quizHintLabel.style.display = 'inline-block';
-                });
-                hintBtn.addEventListener('mouseleave', () => {
-                    quizHintLabel.style.display = 'none';
-                });
+            } else {
+                // Ensure any inline help element stays hidden when hints are disabled
+                try {
+                    const inlineHelp = document.getElementById('quiz-inline-help');
+                    if (inlineHelp) {
+                        inlineHelp.classList.remove('visible');
+                        inlineHelp.style.display = 'none';
+                    }
+                } catch (_) {}
             }
         }
 
@@ -1438,6 +1520,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Determine recommended difficulty: priority is localStorage from progress page, else compute from DB
         let recommended = localStorage.getItem('startingDifficulty');
+        let latestCompletedDifficultyFromDb = null;
         if (!(recommended === 'Easy' || recommended === 'Medium' || recommended === 'Hard')) {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -1451,7 +1534,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         .limit(1)
                         .maybeSingle();
 
-                    const lastDiff = latestProgress?.difficulty || 'easy';
+                    latestCompletedDifficultyFromDb = latestProgress?.difficulty || null;
+                    const lastDiff = latestCompletedDifficultyFromDb || 'easy';
                     const accDec = typeof latestProgress?.accuracy === 'number' ? latestProgress.accuracy : 0;
                     const abilityScore = typeof latestProgress?.ability === 'number' ? latestProgress.ability : 0;
                     const transition = evaluateDifficultyTransition(lastDiff, accDec * 100, abilityScore);
@@ -1462,6 +1546,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (_) {
                 recommended = 'Easy';
             }
+        }
+
+        if (latestCompletedDifficultyFromDb !== null) {
+            setLastCompletedDifficulty(latestCompletedDifficultyFromDb, true);
         }
 
         if (preTitle && preText) {
@@ -1478,6 +1566,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 score = 0;
                 usedQuestionIds = [];
                 resetDifficultyProgress();
+                updateHardHintLockState();
                 fetchAndRenderQuestions();
             };
             preOk.addEventListener('click', onStart);
@@ -1487,6 +1576,7 @@ document.addEventListener('DOMContentLoaded', function() {
             score = 0;
             usedQuestionIds = [];
             resetDifficultyProgress();
+            updateHardHintLockState();
             fetchAndRenderQuestions();
         }
     }
@@ -1702,7 +1792,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const currentGoal = currentDifficulty === 'Easy' ? easyGoal : (currentDifficulty === 'Medium' ? mediumGoal : hardGoal);
                     if (difficultyProgressData.totalMainQuestions >= 10 && score < currentGoal) {
                         // Insert progress on failure to trigger ML prediction
-                        await insertUserProgress(currentDifficulty);
+                        await insertUserProgress(currentDifficulty, { markCompletion: false });
                         if (attemptsLimitModal) attemptsLimitModal.style.display = 'flex';
                         return; // Stop progressing further
                     }
@@ -1750,6 +1840,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 roundCorrect = true;
                 currentSubIdx = 0;
                 currentMainIdx = 0;
+                updateHardHintLockState();
 
                 // Fetch and render questions for the (possibly) new difficulty
                 await fetchAndRenderQuestions();
